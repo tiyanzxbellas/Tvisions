@@ -1,4 +1,5 @@
-import { Download, ExternalLink, HardDrive, ShieldCheck, Play } from "lucide-react";
+import Link from "next/link";
+import { Download, ExternalLink, HardDrive, ShieldCheck, Play, ChevronRight } from "lucide-react";
 import type { DownloadLink } from "@/lib/types";
 
 interface Props {
@@ -39,27 +40,47 @@ export default function DownloadSection({ title, version, mod, downloads, google
         {downloads.length === 0 && (
           <p className="text-sm text-slate-400">Download links are being prepared — please check the original page.</p>
         )}
-        {downloads.map((d, i) => (
-          <a
-            key={i}
-            href={d.url}
-            target="_blank"
-            rel="nofollow noopener"
-            className="btn-neon flex items-center gap-4 rounded-xl px-5 py-4"
-          >
-            <Download className="h-7 w-7 shrink-0" strokeWidth={2.5} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-display font-bold">
-                {d.label || `Download ${title} ${version}`}
+        {downloads.map((d, i) =>
+          d.localUrl ? (
+            <Link
+              key={i}
+              href={d.localUrl}
+              className="btn-neon flex items-center gap-4 rounded-xl px-5 py-4"
+            >
+              <Download className="h-7 w-7 shrink-0" strokeWidth={2.5} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display font-bold">
+                  {d.label || `Download ${title} ${version}`}
+                </span>
+                <span className="flex items-center gap-2 text-xs font-semibold opacity-80">
+                  <HardDrive className="h-3.5 w-3.5" />
+                  {d.size ? `${d.size} • ` : ""}APK • Android
+                </span>
               </span>
-              <span className="flex items-center gap-2 text-xs font-semibold opacity-80">
-                <HardDrive className="h-3.5 w-3.5" />
-                {d.size ? `${d.size} • ` : ""}APK • Android
+              <ChevronRight className="h-5 w-5 shrink-0" />
+            </Link>
+          ) : (
+            <a
+              key={i}
+              href={d.url}
+              target="_blank"
+              rel="nofollow noopener"
+              className="btn-neon flex items-center gap-4 rounded-xl px-5 py-4"
+            >
+              <Download className="h-7 w-7 shrink-0" strokeWidth={2.5} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display font-bold">
+                  {d.label || `Download ${title} ${version}`}
+                </span>
+                <span className="flex items-center gap-2 text-xs font-semibold opacity-80">
+                  <HardDrive className="h-3.5 w-3.5" />
+                  {d.size ? `${d.size} • ` : ""}APK • Android
+                </span>
               </span>
-            </span>
-            <ExternalLink className="h-5 w-5 shrink-0" />
-          </a>
-        ))}
+              <ExternalLink className="h-5 w-5 shrink-0" />
+            </a>
+          )
+        )}
 
         {googlePlayUrl && (
           <a
@@ -73,7 +94,7 @@ export default function DownloadSection({ title, version, mod, downloads, google
           </a>
         )}
         <p className="text-center text-xs text-slate-500">
-          Files are not hosted here — download buttons redirect to the original source.
+          Files are not hosted on this site — downloads are served by the original source files.
         </p>
       </div>
     </div>
