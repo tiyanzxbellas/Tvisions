@@ -23,12 +23,14 @@ export interface TelegramDownload {
   /** .apk filename displayed on the source's "Download from Telegram Bot" button */
   filename: string;
   /**
-   * Where the real Telegram button lives (the source's download page). The
-   * bot's t.me deep link is generated client-side with a token computed in
-   * the page's inline JS (`generateToken(filePath)`), so it cannot be
-   * replicated server-side — we route users to the button itself.
+   * Relative file path used by the source's `generateToken(filePath)` call,
+   * e.g. `gorebox-27/GB27-v0.13.14-mod-apkvision.apk`. Our `/api/tg` route
+   * exchanges this (+ the public secret from the source's inline JS) for a
+   * one-time bot token at `generate_token.php`, then opens
+   * `https://telegram.me/ApkDownload24Bot?start=<token>` — exactly like the
+   * button on the source site, without ever visiting apkvision.org.
    */
-  url: string;
+  filePath: string;
 }
 
 /** Direct file info parsed from the source's download page. */

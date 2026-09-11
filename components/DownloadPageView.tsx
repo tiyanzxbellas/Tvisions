@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Download, FileBox, HardDrive, Cpu, Tag, AlertTriangle, ExternalLink, ChevronLeft, ShieldCheck, Send } from "lucide-react";
+import { Download, FileBox, HardDrive, Cpu, Tag, AlertTriangle, ExternalLink, ChevronLeft } from "lucide-react";
 import type { ApkDetail, ApkDownloadFile } from "@/lib/types";
 import Breadcrumbs from "./Breadcrumbs";
 import Reveal from "./Reveal";
+import TelegramDownloadButton from "./TelegramDownloadButton";
 
 interface Props {
   id: string;
@@ -111,7 +112,6 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
                   <InfoRow icon={<Tag className="h-3.5 w-3.5" />} label="Version" value={file.version} />
                   <InfoRow icon={<HardDrive className="h-3.5 w-3.5" />} label="Size" value={file.size} />
                   <InfoRow icon={<Cpu className="h-3.5 w-3.5" />} label="Processor" value={file.arch} />
-                  <InfoRow icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Format" value="APK • Android" />
                 </dl>
               </div>
 
@@ -126,46 +126,9 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
                 </span>
               </a>
 
-              {/* Telegram bot alternative — same file, like on the source site */}
-              {file.telegram && (
-                <>
-                  <a
-                    href={file.telegram.url}
-                    target="_blank"
-                    rel="nofollow noopener"
-                    className="btn-telegram flex w-full items-center justify-center gap-3 rounded-xl px-6 py-4"
-                  >
-                    <Send className="h-6 w-6 shrink-0" strokeWidth={2.5} />
-                    <span className="min-w-0 text-center">
-                      <span className="block font-display text-base font-bold leading-tight sm:text-lg">
-                        Download from Telegram Bot
-                      </span>
-                      <span className="block truncate text-xs font-semibold opacity-80">
-                        {file.telegram.filename}
-                      </span>
-                    </span>
-                  </a>
-                  <p className="-mt-1 text-center text-[11px] leading-snug text-slate-500">
-                    Alternatif via bot Telegram resmi source — file yang sama, tombolnya dibuka
-                    di halaman source (wajib join channel @apkvision dulu).
-                  </p>
-                </>
-              )}
-
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <p className="text-slate-500">
-                  File di-serve langsung dari server source — tanpa menunggu timer.
-                </p>
-                <a
-                  href={file.sourceUrl}
-                  target="_blank"
-                  rel="nofollow noopener"
-                  className="flex shrink-0 items-center gap-1 text-slate-500 transition hover:text-aqua"
-                >
-                  Buka di source
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
+              {/* Telegram bot alternative — same file, deep-links straight into
+                  Telegram (token via /api/tg), like the button on the source site */}
+              {file.telegram && <TelegramDownloadButton filePath={file.telegram.filePath} />}
             </div>
           ) : (
             <div className="relative space-y-3 p-5 pt-0 sm:p-6 sm:pt-0">

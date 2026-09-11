@@ -309,6 +309,8 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
     const href = $(el).attr("href") || "";
     if (seenDl.has(href) || !href) return;
     seenDl.add(href);
+    // Never leak inline JS/CSS text into the button label.
+    $(el).find("script, style").remove();
     const label = clean($(el).text());
     const sizeMatch = label.match(/(\d[\d.,]*\s*(?:GB|MB|KB))/i);
     downloads.push({
@@ -400,10 +402,28 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
   });
   if (!fileUrl) return null;
 
+  // The Telegram button calls the source's inline `generateToken('dir/file.apk')`.
+  // Grab that file path so our own button can request a bot token for it
+  // (see /api/tg). Fallback: derive it from the CDN file URL, whose path
+  // matches (`https://dl.apkvision.org/<dir>/<file>` -> `<dir>/<file>`).
+  const tgCall = html.match(/generateToken\(\s*['"]([^'"]+)['"]\s*\)/i);
+  let tgFilePath = tgCall ? clean(decodeEntities(tgCall[1])) : "";
+  if (!tgFilePath && fileUrl) {
+    try {
+      tgFilePath = new URL(fileUrl).pathname.replace(/^\/+/, "");
+    } catch {
+      /* ignore */
+    }
+  }
+
   // Parse "Label: value" pairs from the tag-stripped text (line based, so
   // markup like <b>Size:</b> works regardless of tag placement).
+  // Strip scripts/styles first so inline JS never leaks into parsed values.
   const LABELS = ["Filename", "Version", "Processor", "Architecture", "Arch", "Size", "Updated"];
-  const plain = html.replace(/<[^>]*>/g, " ");
+  const noScript = html
+    .replace(/<script[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style\s*>/gi, " ");
+  const plain = noScript.replace(/<[^>]*>/g, " ");
   const lines = plain.split("\n").map(clean).filter(Boolean);
   const row = (label: string): string => {
     const re = new RegExp(`(?<![\\w-])${label}\\s*:\\s*(.+)`, "i");
@@ -421,19 +441,22 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
   const filename = row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || "");
 
   // "Download from Telegram Bot" alternative (same file, delivered by the
-  // source's Telegram bot @apkvision_dl_bot). The button's t.me deep link is
-  // generated client-side (inline `generateToken(filePath)` script), so we can
-  // only detect the option here and route users to the source page where the
-  // real button lives. Match the button label; the FAQ text ("...via the
-  // telegram client") doesn't match this pattern.
+  // source's Telegram bot @ApkDownload24Bot). The button exists when the page
+  // carries a `generateToken('...')` call or the button label (the FAQ text
+  // "...via the telegram client" doesn't match this pattern). Our own button
+  // requests a token server-side via /api/tg and deep-links straight into
+  // Telegram — the user never visits the source page.
   let telegram: TelegramDownload | undefined;
-  const tgAt = html.search(/download\s+(?:from|via)\s+telegram/i);
-  if (tgAt >= 0) {
-    const tgWindow = html.slice(tgAt, tgAt + 800).replace(/<[^>]*>/g, " ");
+  const tgAt = noScript.search(/download\s+(?:from|via)\s+telegram/i);
+  if (tgFilePath && (tgCall || tgAt >= 0)) {
+    const tgWindow =
+      tgAt >= 0 ? noScript.slice(tgAt, tgAt + 800).replace(/<[^>]*>/g, " ") : "";
     const tgName = tgWindow.match(/[\w.\-+]+\.(?:apk|xapk|apks)/i);
     telegram = {
-      filename: tgName ? decodeEntities(tgName[0]) : filename,
-      url: sourceUrl,
+      filename: tgName
+        ? decodeEntities(tgName[0])
+        : decodeURIComponent(tgFilePath.split("/").pop() || "") || filename,
+      filePath: tgFilePath,
     };
   }
 
