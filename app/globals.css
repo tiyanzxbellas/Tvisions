@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #03060a;
+  --color-panel: #080e14;
+  --color-panel2: #0c141d;
+  --color-neon: #22ff88;
+  --color-neon-dim: #0e9f5d;
+  --color-aqua: #38bdf8;
+  --color-royal: #2f6bff;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+  --animate-marquee: marquee 45s linear infinite;
+  --animate-spin-slow: spin 14s linear infinite;
+  --animate-pulse-glow: pulseGlow 2.6s ease-in-out infinite;
+  --animate-shine: shine 3.2s linear infinite;
+  --animate-grid-pan: gridPan 22s linear infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-18px); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 24px rgba(34, 255, 136, 0.45); }
+    50% { opacity: 0.75; box-shadow: 0 0 8px rgba(34, 255, 136, 0.2); }
+  }
+  @keyframes shine {
+    from { transform: translateX(-120%) skewX(-18deg); }
+    to { transform: translateX(240%) skewX(-18deg); }
+  }
+  @keyframes gridPan {
+    from { background-position: 0 0; }
+    to { background-position: 120px 120px; }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-void);
+  color: #e8f1f2;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  overflow-x: clip; /* clip: tidak bikin scroll-container, sticky header aman */
+}
+
+::selection {
+  background: rgba(34, 255, 136, 0.35);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #060b10;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #22ff88, #2f6bff);
+  border-radius: 8px;
+}
+
+/* ------- signature utilities ------- */
+
+.text-glow-green {
+  text-shadow: 0 0 18px rgba(34, 255, 136, 0.65), 0 0 60px rgba(34, 255, 136, 0.25);
+}
+.text-glow-blue {
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.65), 0 0 60px rgba(56, 189, 248, 0.25);
+}
+
+.bg-grid-neon {
+  background-image:
+    linear-gradient(rgba(34, 255, 136, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.card-neon {
+  background: linear-gradient(160deg, rgba(16, 26, 34, 0.92), rgba(6, 12, 17, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+}
+.card-neon:hover {
+  transform: translateY(-6px);
+  border-color: rgba(34, 255, 136, 0.55);
+  box-shadow: 0 12px 40px -8px rgba(34, 255, 136, 0.35), 0 0 0 1px rgba(34, 255, 136, 0.25);
+}
+
+.btn-neon {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(100deg, #0e9f5d, #22ff88 55%, #38bdf8 130%);
+  color: #02120a;
+  box-shadow: 0 0 26px rgba(34, 255, 136, 0.4);
+  transition: transform 0.25s, box-shadow 0.25s, filter 0.25s;
+}
+.btn-neon:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.1);
+  box-shadow: 0 0 44px rgba(34, 255, 136, 0.6);
+}
+.btn-neon::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: shine 3.2s linear infinite;
+}
+
+.btn-ghost-blue {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #bfe9ff;
+  transition: all 0.25s;
+}
+.btn-ghost-blue:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.9);
+  box-shadow: 0 0 26px rgba(56, 189, 248, 0.35);
+}
+
+.chip-mod {
+  background: linear-gradient(100deg, rgba(34, 255, 136, 0.16), rgba(56, 189, 248, 0.16));
+  border: 1px solid rgba(34, 255, 136, 0.35);
+  color: #9dffc9;
+}
+
+.glass-bar {
+  background: rgba(4, 8, 12, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ------- horizontal snap rows (STRICT samping doang, anti curi scroll) ------- */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.snap-row {
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  /* kunci: row TIDAK BISA scroll vertikal sama sekali → swipe atas-bawah selalu buat halaman */
+  overflow-y: hidden;
+  overflow-y: clip;
+  /* geser samping tidak merambat ke halaman */
+  overscroll-behavior-x: contain;
+  mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+
+/* ------- perf: browser only renders near-visible cards (native, zero JS) ------- */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
+}
+
+/* ------- motion cost control ------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* cheap ambient on small screens: no grid-pan animation on phones */
+@media (max-width: 640px) {
+  .animate-grid-pan {
+    animation: none;
+  }
+}
+
+/* article / description typography */
+.prose-neon p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+  color: #c9d8dc;
+}
+.prose-neon strong {
+  color: #fff;
+}
+.prose-neon a {
+  color: var(--color-aqua);
+  text-decoration: underline;
+}
