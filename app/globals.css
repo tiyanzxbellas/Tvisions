@@ -121,6 +121,21 @@ body {
   animation: shine 3.2s linear infinite;
 }
 
+/* Telegram-brand download button (secondary to the neon one) */
+.btn-telegram {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(100deg, #1e96c9, #2aabee 55%, #229ed9 130%);
+  color: #eef9ff;
+  box-shadow: 0 0 26px rgba(42, 171, 238, 0.35);
+  transition: transform 0.25s, box-shadow 0.25s, filter 0.25s;
+}
+.btn-telegram:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.1);
+  box-shadow: 0 0 44px rgba(42, 171, 238, 0.55);
+}
+
 .btn-ghost-blue {
   border: 1px solid rgba(56, 189, 248, 0.4);
   color: #bfe9ff;

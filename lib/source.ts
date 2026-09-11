@@ -1,5 +1,13 @@
 import * as cheerio from "cheerio";
-import type { ApkDetail, ApkDownloadFile, ApkItem, DownloadLink, HomeSection, PagedResult } from "./types";
+import type {
+  ApkDetail,
+  ApkDownloadFile,
+  ApkItem,
+  DownloadLink,
+  HomeSection,
+  PagedResult,
+  TelegramDownload,
+} from "./types";
 
 /** Source site. Overridable via SOURCE_ORIGIN (dev/local mock). */
 export const ORIGIN = process.env.SOURCE_ORIGIN || "https://apkvision.org";
@@ -410,13 +418,33 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
     return "";
   };
 
+  const filename = row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || "");
+
+  // "Download from Telegram Bot" alternative (same file, delivered by the
+  // source's Telegram bot @apkvision_dl_bot). The button's t.me deep link is
+  // generated client-side (inline `generateToken(filePath)` script), so we can
+  // only detect the option here and route users to the source page where the
+  // real button lives. Match the button label; the FAQ text ("...via the
+  // telegram client") doesn't match this pattern.
+  let telegram: TelegramDownload | undefined;
+  const tgAt = html.search(/download\s+(?:from|via)\s+telegram/i);
+  if (tgAt >= 0) {
+    const tgWindow = html.slice(tgAt, tgAt + 800).replace(/<[^>]*>/g, " ");
+    const tgName = tgWindow.match(/[\w.\-+]+\.(?:apk|xapk|apks)/i);
+    telegram = {
+      filename: tgName ? decodeEntities(tgName[0]) : filename,
+      url: sourceUrl,
+    };
+  }
+
   return {
     fileUrl,
-    filename: row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || ""),
+    filename,
     version: row("Version") || version,
     arch: row("Processor") || row("Architecture") || row("Arch"),
     size: row("Size"),
     sourceUrl,
+    telegram,
   };
 }
 

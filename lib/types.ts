@@ -18,6 +18,19 @@ export interface DownloadLink {
   size: string;
 }
 
+/** Telegram-bot download option shown on the source's download page. */
+export interface TelegramDownload {
+  /** .apk filename displayed on the source's "Download from Telegram Bot" button */
+  filename: string;
+  /**
+   * Where the real Telegram button lives (the source's download page). The
+   * bot's t.me deep link is generated client-side with a token computed in
+   * the page's inline JS (`generateToken(filePath)`), so it cannot be
+   * replicated server-side — we route users to the button itself.
+   */
+  url: string;
+}
+
 /** Direct file info parsed from the source's download page. */
 export interface ApkDownloadFile {
   /** Absolute URL of the .apk file on the source CDN */
@@ -28,6 +41,8 @@ export interface ApkDownloadFile {
   size: string;
   /** Original download page on the source (fallback link) */
   sourceUrl: string;
+  /** "Download from Telegram Bot" alternative for the same file (when present) */
+  telegram?: TelegramDownload;
 }
 
 export interface ApkDetail extends ApkItem {

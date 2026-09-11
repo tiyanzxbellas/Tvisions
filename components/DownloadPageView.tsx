@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Download, FileBox, HardDrive, Cpu, Tag, AlertTriangle, ExternalLink, ChevronLeft, ShieldCheck } from "lucide-react";
+import { Download, FileBox, HardDrive, Cpu, Tag, AlertTriangle, ExternalLink, ChevronLeft, ShieldCheck, Send } from "lucide-react";
 import type { ApkDetail, ApkDownloadFile } from "@/lib/types";
 import Breadcrumbs from "./Breadcrumbs";
 import Reveal from "./Reveal";
@@ -125,6 +125,32 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
                   Download APK{file.size ? ` — ${file.size}` : ""}
                 </span>
               </a>
+
+              {/* Telegram bot alternative — same file, like on the source site */}
+              {file.telegram && (
+                <>
+                  <a
+                    href={file.telegram.url}
+                    target="_blank"
+                    rel="nofollow noopener"
+                    className="btn-telegram flex w-full items-center justify-center gap-3 rounded-xl px-6 py-4"
+                  >
+                    <Send className="h-6 w-6 shrink-0" strokeWidth={2.5} />
+                    <span className="min-w-0 text-center">
+                      <span className="block font-display text-base font-bold leading-tight sm:text-lg">
+                        Download from Telegram Bot
+                      </span>
+                      <span className="block truncate text-xs font-semibold opacity-80">
+                        {file.telegram.filename}
+                      </span>
+                    </span>
+                  </a>
+                  <p className="-mt-1 text-center text-[11px] leading-snug text-slate-500">
+                    Alternatif via bot Telegram resmi source — file yang sama, tombolnya dibuka
+                    di halaman source (wajib join channel @apkvision dulu).
+                  </p>
+                </>
+              )}
 
               <div className="flex items-center justify-between gap-3 text-xs">
                 <p className="text-slate-500">
