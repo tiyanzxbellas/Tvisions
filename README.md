@@ -19,7 +19,7 @@ Dibangun dengan **Next.js 16** — fully **Vercel-ready**.
 | 🎮 Games / 📱 Apps | Full listing + pagination (`/games/`, `/app/`) |
 | 🗂️ Genres | 18 genre games + 19 kategori apps (`/games/action/`, `/app/tools/`, …) |
 | 📄 Detail page | Icon, version + MOD badges, rating, App Info, description, screenshot lightbox, download box, related |
-| 📥 Download page | `/download/<genre>/<slug>/<version>/` — halaman download branded (info file: name/size/arch) + tombol **langsung ke file source** (skip countdown 5 detik & ads source). Link lama style source (`/games/.../download/...`) auto-redirect ke sini. Noindex |
+| 📥 Download page | `/download/<genre>/<slug>/<version>/` — halaman download branded (info file: name/size/arch) + tombol **langsung ke file source** (skip countdown 5 detik & ads source) + tombol **Download from Telegram Bot** (alternatif file sama via bot Telegram source; link `t.me`-nya dihitung client-side oleh JS source — `generateToken()` — jadi tombol kita mengarah ke halaman source tempat tombol aslinya). Link lama style source (`/games/.../download/...`) auto-redirect ke sini. Noindex |
 | 🔎 Search | Full-page results (noindex) + **live suggestions** (`/api/suggest/`) |
 | ⭐ Special pages | `/best-new-releases/`, `/popular-games/`, `/updated/`, `/top-100-games/` |
 | 📝 More pages | `/request/`, `/privacy-policy/`, `/dmca/`, `/contacts/`, `/offline/` |

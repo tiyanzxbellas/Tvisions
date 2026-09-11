@@ -137,6 +137,22 @@ const DOWNLOAD_PAGE = `<!doctype html><html><head><title>Download Parahcuy – A
     <p><b>Size:</b> 84.89 MB</p>
   </div>
   <a class="dl-btn" href="/dl/parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk">Download APK<br>ParahCuy-v1.3.2-full-apkvision.apk</a>
+  <div class="dl-btn dl-btn-tg">
+    <span class="dl-btn-tg-title">Download from Telegram Bot</span>
+    <span class="dl-btn-tg-file">ParahCuy-v1.3.2-full-apkvision.apk</span>
+  </div>
+  <script>
+    function generateToken(filePath) {
+      var t = 0;
+      for (var i = 0; i < filePath.length; i++) t = (t * 31 + filePath.charCodeAt(i)) >>> 0;
+      return "tg_" + t.toString(36);
+    }
+  </script>
+  <div class="dl-faq">
+    <h2>Download FAQs</h2>
+    <p>Low download speed — download the file from our server and via the telegram client,
+    if the download speed via telegram is low, then there is a problem with your Internet or device!</p>
+  </div>
 </body></html>`;
 
 /* --------------------------------- server --------------------------------- */
