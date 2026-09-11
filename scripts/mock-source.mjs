@@ -175,6 +175,147 @@ const DOWNLOAD_PAGE = `<!doctype html><html><head><title>Download Parahcuy – A
   </div>
 </body></html>`;
 
+/* ------------------- second post: "runaway download anchor" ---------------- */
+/*
+ * Mirrors a real-world markup bug on the source site: the download button's
+ * <a> is never closed, so the HTML parser nests EVERYTHING after it (attention
+ * note, FAQ accordion, "New Releases" rail, footer, contact modal) inside the
+ * anchor. `$(el).text()` then returns the whole rest of the page as the
+ * button's label — the bug TiyanzVision must defend against.
+ */
+const POST2 = {
+  id: 130999,
+  slug: "gta-sa-v2-11-311-full-mod-money-130999",
+  link: `${ORIGIN}/games/action/gta-sa-v2-11-311-full-mod-money-130999/`,
+  title: "GTA SA APK",
+  content: "<p>Open-world classic, fully modded.</p>",
+  modified: "2026-09-08T08:00:00",
+};
+
+const DETAIL_RUNAWAY = `<!doctype html><html><head>
+  <meta property="og:image" content="${ORIGIN}/img/icon.png">
+  <title>GTA SA APK Download v2.11.311 free</title>
+</head><body>
+  <div class="ver-top">
+    <div class="ver-top-h1"><h1>GTA SA APK</h1></div>
+    <span class="ver-top-version">v2.11.311</span>
+    <span class="ver-top-version">Full MOD + Money</span>
+  </div>
+  <table class="appinfo">
+    <tr><th>Version</th><td>v2.11.311</td></tr>
+    <tr><th>Genre</th><td><a href="/games/action/">Action</a></td></tr>
+    <tr><th>Updated</th><td>8 September 2026</td></tr>
+  </table>
+  <p class="rating">Rating: 4.6/5 (9876 votes)</p>
+
+  <!-- the download button: <a> is NEVER closed -> swallows the whole page -->
+  <div class="dl-box">
+  <a id="durl" class="fdl-btn downad" href="/games/action/gta-sa-v2-11-311-full-mod-money-130999/download/v2.11.311-apk/" rel="nofollow" download>
+    <div class="fdl-btn-title"><div>Download APK &#8212; 2.46 GB</div>GTA-SA-v2.11.311-full-mod-money-apkvision.apk</div>
+    <button id="telega" class="fdl-btn telegram" onclick="generateToken('gta-sa/GTA-SA-v2.11.311-full-mod-money-apkvision.apk')">
+      <div class="fdl-btn-title"><div>Download from Telegram Bot</div>GTA-SA-v2.11.311-full-mod-money-apkvision.apk</div>
+    </button>
+    <p class="dl-attention">Attention! This APK is designed for devices with an ARM64 CPU (AArch64, arm64-v8a).
+       You won&#8217;t be able to install this modification on a device with a 32-bit processor.</p>
+    <div class="dl-report">Can&#8217;t download file? <a href="/contacts/">Send Report</a></div>
+    <div class="dl-faq">
+      <h2>Download FAQs</h2>
+      <h3>Why does Virustotal detect our APK as potentially unwanted or suspicious?</h3>
+      <p>We use obfuscation to protect the modifications we&#8217;ve made to the APK files. Upon launching the APK,
+         a banner with our website&#8217;s logo and a toast message confirming that the file was downloaded from our
+         site will appear.</p>
+      <h3>Download link is broken?</h3>
+      <p>Since we use caching and the server has special sync functionality, sometimes some newly posted games will
+         have broken links for a few minutes. You can try again in about 5-15 minutes.</p>
+      <h3>Low download speed</h3>
+      <p>A simple check. Download the file from our server and via the telegram client.</p>
+      <h3>Why do BitDefenderFalx and Trustlook flag our APK as Riskware or PUA?</h3>
+      <p>Our APKs may be flagged by BitDefenderFalx as Android.Riskware.TestKey.rA and by Trustlook as
+         Android.PUA.DebugKey because we use a debug key for signing.</p>
+      <h3>Is the file I download from APKVISION safe?</h3>
+      <p>Of course, every file is checked by antivirus software before being uploaded to the system.</p>
+    </div>
+    <div class="mainb">
+      <div class="mainb-main-title">New Releases</div>
+      <a href="/games/action/zad-archery-idle-rpg-131111/" class="mainb-item" id="post-131111">
+        <img src="${ORIGIN}/img/icon.png" alt="Zad Archery">
+        <div class="mainb-title">Zad Archery: Idle RPG</div><div class="mainb-cat">v1.0.4</div>
+      </a>
+      <a href="/games/action/apple-knight-3-131222/" class="mainb-item" id="post-131222">
+        <img src="${ORIGIN}/img/icon.png" alt="Apple Knight 3">
+        <div class="mainb-title">Apple Knight 3</div><div class="mainb-cat">v2.1.0</div>
+      </a>
+    </div>
+    <footer class="site-footer">
+      <a href="/app/tools/apkvision-store-131787/">Download APKVision Store</a> Our official app
+      &copy; 2015 - 2026 <a href="https://apkvision.org/">APKVISION.ORG</a>
+      <a href="/privacy-policy/">PRIVACY POLICY</a> <a href="/dmca/">DMCA</a> <a href="/contacts/">Contact</a>
+    </footer>
+    <div class="contact-modal">Insert You are going to send email to Send Move Comment Move</div>
+</body></html>`;
+
+/* --------- variant: label split over several <div>s + runaway anchor ------- */
+const POST3 = {
+  id: 130888,
+  slug: "split-label-game-130888",
+  link: `${ORIGIN}/games/action/split-label-game-130888/`,
+  title: "Split Label Game APK",
+  content: "<p>Label split across block elements.</p>",
+  modified: "2026-09-08T08:00:00",
+};
+
+const detailRunawayVariant = (post, inner, version) => `<!doctype html><html><head>
+  <meta property="og:image" content="${ORIGIN}/img/icon.png">
+  <title>${post.title} Download ${version} free</title>
+</head><body>
+  <div class="ver-top">
+    <div class="ver-top-h1"><h1>${post.title}</h1></div>
+    <span class="ver-top-version">${version}</span>
+  </div>
+  <table class="appinfo">
+    <tr><th>Version</th><td>${version}</td></tr>
+    <tr><th>Genre</th><td><a href="/games/action/">Action</a></td></tr>
+  </table>
+  <p class="rating">Rating: 4.4/5 (321 votes)</p>
+  <div class="dl-box">
+  <a id="durl" class="fdl-btn downad" href="/games/action/${post.slug}/download/${version}-apk/" rel="nofollow" download>
+    ${inner}
+    <div class="dl-faq">
+      <h2>Download FAQs</h2>
+      <h3>Is the file I download from APKVISION safe?</h3>
+      <p>Of course, every file is checked by antivirus software before being uploaded to the system.
+         Our hosting server is also regularly checked to avoid any threats.</p>
+    </div>
+    <footer class="site-footer">&copy; 2015 - 2026 <a href="https://apkvision.org/">APKVISION.ORG</a>
+      <a href="/privacy-policy/">PRIVACY POLICY</a> <a href="/dmca/">DMCA</a> <a href="/contacts/">Contact</a></footer>
+    <div class="contact-modal">Insert You are going to send email to Send Move Comment Move</div>
+</body></html>`;
+
+const DETAIL_SPLIT_LABEL = detailRunawayVariant(
+  POST3,
+  `<div class="fdl-btn-title"><div>Download</div><div>APK &#8212; 1.10 GB</div>Split-Label-Game-v3.0-mod-apkvision.apk</div>`,
+  "v3.0"
+);
+
+/* --------- variant: anchor text with no "Download …" line at all ----------- */
+const POST4 = {
+  id: 130777,
+  slug: "no-label-game-130777",
+  link: `${ORIGIN}/games/action/no-label-game-130777/`,
+  title: "No Label Game APK",
+  content: "<p>Anchor carries no button text.</p>",
+  modified: "2026-09-08T08:00:00",
+};
+
+const DETAIL_NO_LABEL = detailRunawayVariant(
+  POST4,
+  `<div class="fdl-btn-title">No-Label-Game-v9.9-mod-apkvision.apk</div>
+    <p class="dl-attention">Attention! This APK is designed for devices with an ARM64 CPU (AArch64, arm64-v8a).
+       You won&#8217;t be able to install this modification on a device with a 32-bit processor.</p>
+    <div class="dl-size">Size: 748.12 MB</div>`,
+  "v9.9"
+);
+
 /* --------------------------------- server --------------------------------- */
 
 const APK_FILE = Buffer.alloc(64 * 1024);
@@ -221,6 +362,20 @@ const server = http.createServer((req, res) => {
     if (p === "/games/action/parahcuy-action-platformer-130581/") return send(200, "text/html; charset=utf-8", DETAIL);
     if (p === "/games/action/parahcuy-action-platformer-130581/download/v1.3.2-apk/")
       return send(200, "text/html; charset=utf-8", DOWNLOAD_PAGE);
+    if (p === "/games/action/gta-sa-v2-11-311-full-mod-money-130999/")
+      return send(200, "text/html; charset=utf-8", DETAIL_RUNAWAY);
+    if (p === "/games/action/split-label-game-130888/") return send(200, "text/html; charset=utf-8", DETAIL_SPLIT_LABEL);
+    if (p === "/games/action/no-label-game-130777/") return send(200, "text/html; charset=utf-8", DETAIL_NO_LABEL);
+    if (p === "/games/action/gta-sa-v2-11-311-full-mod-money-130999/download/v2.11.311-apk/")
+      return send(
+        200,
+        "text/html; charset=utf-8",
+        DOWNLOAD_PAGE.replace(/Parahcuy – Action Platformer/g, "GTA SA")
+          .replace(/parahcuy-action-platformer/g, "gta-sa")
+          .replace(/ParahCuy-v1\.3\.2-full-apkvision\.apk/g, "GTA-SA-v2.11.311-full-mod-money-apkvision.apk")
+          .replace(/v1\.3\.2/g, "v2.11.311")
+          .replace(/84\.89 MB/g, "2.46 GB")
+      );
     if (p.startsWith("/dl/") && p.endsWith(".apk")) {
       res.writeHead(200, {
         "Content-Type": "application/vnd.android.package-archive",
@@ -232,30 +387,38 @@ const server = http.createServer((req, res) => {
     if (p === "/img/icon.png") return send(200, "image/png", ICON);
     if (p === "/img/shot1.png" || p === "/img/shot2.png") return send(200, "image/png", SHOT);
 
-    if (p === "/wp-json/wp/v2/posts/130581") {
+    const postJson = (post, excerpt) =>
+      JSON.stringify({
+        id: post.id,
+        slug: post.slug,
+        link: post.link,
+        title: { rendered: post.title },
+        content: { rendered: post.content },
+        excerpt: { rendered: excerpt },
+        modified: post.modified,
+        categories: [3],
+      });
+
+    if (p === "/wp-json/wp/v2/posts/130581")
+      return send(200, "application/json", postJson(POST, "<p>Platformer action 2D dengan kontrol halus.</p>"));
+    if (p === "/wp-json/wp/v2/posts/130999")
+      return send(200, "application/json", postJson(POST2, "<p>Open-world classic, fully modded.</p>"));
+    if (p === "/wp-json/wp/v2/posts/130888")
+      return send(200, "application/json", postJson(POST3, "<p>Label split across block elements.</p>"));
+    if (p === "/wp-json/wp/v2/posts/130777")
+      return send(200, "application/json", postJson(POST4, "<p>Anchor carries no button text.</p>"));
+    if (p === "/wp-json/wp/v2/posts") {
       return send(
         200,
         "application/json",
-        JSON.stringify({
-          id: POST.id,
-          slug: POST.slug,
-          link: POST.link,
-          title: { rendered: POST.title },
-          content: { rendered: POST.content },
-          excerpt: { rendered: "<p>Platformer action 2D dengan kontrol halus.</p>" },
-          modified: POST.modified,
-          categories: [3],
-        })
+        JSON.stringify([POST, POST2, POST3, POST4].map((post) => ({ link: post.link, modified: post.modified })))
       );
-    }
-    if (p === "/wp-json/wp/v2/posts") {
-      return send(200, "application/json", JSON.stringify([{ link: POST.link, modified: POST.modified }]));
     }
     if (p === "/wp-json/wp/v2/search") {
       const q = (url.searchParams.get("search") || "").toLowerCase();
-      const items = q && POST.title.toLowerCase().includes(q)
-        ? [{ id: POST.id, title: { rendered: POST.title }, url: POST.link }]
-        : [];
+      const items = [POST, POST2, POST3, POST4]
+        .filter((post) => q && post.title.toLowerCase().includes(q))
+        .map((post) => ({ id: post.id, title: { rendered: post.title }, url: post.link }));
       return send(200, "application/json", JSON.stringify(items));
     }
 
