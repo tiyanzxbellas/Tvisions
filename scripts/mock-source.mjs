@@ -130,12 +130,9 @@ const DOWNLOAD_PAGE = `<!doctype html><html><head><title>Download Parahcuy – A
   <h1>Download Parahcuy – Action Platformer - APK - v1.3.2</h1>
   <p>Your download link is almost ready</p>
   <div class="countdown"><span>5</span></div>
-  <div class="dl-info">
-    <p><b>Filename:</b> ParahCuy-v1.3.2-full-apkvision.apk</p>
-    <p><b>Version:</b> v1.3.2</p>
-    <p><b>Processor:</b> arm64-v8a, armeabi-v7a</p>
-    <p><b>Size:</b> 84.89 MB</p>
-  </div>
+  <!-- minified on purpose (like the real source): the whole file-info block,
+       the buttons, the FAQ and the footer sit on ONE line -->
+  <div class="dl-info"><p><b>Filename:</b> ParahCuy-v1.3.2-full-apkvision.apk</p><p><b>Version:</b> v1.3.2</p><p><b>Processor:</b> arm64-v8a, armeabi-v7a</p><p><b>Size:</b> 84.89 MB</p></div><p><b>Attention!</b> This APK is designed for devices with an ARM64 CPU (AArch64, arm64-v8a). Can't download file? <a href="#comments">Send Report</a></p><h2>Download FAQs</h2><p>Why does Virustotal detect our APK as potentially unwanted or suspicious? We use obfuscation to protect our modifications.</p><div class="footer">New Releases &copy; 2015 - 2026 APKVISION.ORG PRIVACY POLICY DMCA Contact Move Comment Move</div>
   <a id="durl" class="fdl-btn downad" href="/dl/parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk" rel="nofollow noopener" download><div class="fdl-btn-title"><div>Download  APK</div>ParahCuy-v1.3.2-full-apkvision.apk</div></a>
   <button id="telega" class="fdl-btn mt telegram xx" onclick="generateToken('parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk')"><div class="fdl-btn-title"><div>Download from Telegram Bot</div>ParahCuy-v1.3.2-full-apkvision.apk</div></button>
   <script>

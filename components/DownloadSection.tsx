@@ -2,6 +2,12 @@ import Link from "next/link";
 import { Download, ExternalLink, HardDrive, ShieldCheck, Play, ChevronRight } from "lucide-react";
 import type { DownloadLink } from "@/lib/types";
 
+/** Scraped labels are untrusted — clamp them so they can't explode the button. */
+function short(value: string | undefined, max: number): string {
+  const s = (value || "").trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
 interface Props {
   title: string;
   version: string;
@@ -50,11 +56,11 @@ export default function DownloadSection({ title, version, mod, downloads, google
               <Download className="h-7 w-7 shrink-0" strokeWidth={2.5} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display font-bold">
-                  {d.label || `Download ${title} ${version}`}
+                  {short(d.label, 90) || `Download ${short(title, 40)} ${short(version, 24)}`}
                 </span>
                 <span className="flex items-center gap-2 text-xs font-semibold opacity-80">
                   <HardDrive className="h-3.5 w-3.5" />
-                  {d.size ? `${d.size} • ` : ""}APK • Android
+                  {short(d.size, 24) ? `${short(d.size, 24)} • ` : ""}APK • Android
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 shrink-0" />
@@ -70,11 +76,11 @@ export default function DownloadSection({ title, version, mod, downloads, google
               <Download className="h-7 w-7 shrink-0" strokeWidth={2.5} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display font-bold">
-                  {d.label || `Download ${title} ${version}`}
+                  {short(d.label, 90) || `Download ${short(title, 40)} ${short(version, 24)}`}
                 </span>
                 <span className="flex items-center gap-2 text-xs font-semibold opacity-80">
                   <HardDrive className="h-3.5 w-3.5" />
-                  {d.size ? `${d.size} • ` : ""}APK • Android
+                  {short(d.size, 24) ? `${short(d.size, 24)} • ` : ""}APK • Android
                 </span>
               </span>
               <ExternalLink className="h-5 w-5 shrink-0" />

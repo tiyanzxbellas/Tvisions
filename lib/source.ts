@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { parseFileMeta } from "./fileMeta";
 import type {
   ApkDetail,
   ApkDownloadFile,
@@ -416,29 +417,15 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
     }
   }
 
-  // Parse "Label: value" pairs from the tag-stripped text (line based, so
-  // markup like <b>Size:</b> works regardless of tag placement).
   // Strip scripts/styles first so inline JS never leaks into parsed values.
-  const LABELS = ["Filename", "Version", "Processor", "Architecture", "Arch", "Size", "Updated"];
   const noScript = html
     .replace(/<script[\s\S]*?<\/script\s*>/gi, " ")
     .replace(/<style[\s\S]*?<\/style\s*>/gi, " ");
-  const plain = noScript.replace(/<[^>]*>/g, " ");
-  const lines = plain.split("\n").map(clean).filter(Boolean);
-  const row = (label: string): string => {
-    const re = new RegExp(`(?<![\\w-])${label}\\s*:\\s*(.+)`, "i");
-    for (const line of lines) {
-      const m = line.match(re);
-      if (m) {
-        // if several labels share one line, cut at the next label
-        const value = m[1].split(new RegExp(`\\s+(?:${LABELS.join("|")})\\s*:`, "i"))[0];
-        return clean(decodeEntities(value));
-      }
-    }
-    return "";
-  };
 
-  const filename = row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || "");
+  // Filename / Version / Processor / Size — value-shaped, so a minified page
+  // can never leak its FAQ + footer into the download button label.
+  const meta = parseFileMeta(html);
+  const filename = meta.filename || decodeURIComponent(fileUrl.split("/").pop() || "");
 
   // "Download from Telegram Bot" alternative (same file, delivered by the
   // source's Telegram bot @ApkDownload24Bot). The button exists when the page
@@ -463,9 +450,9 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
   return {
     fileUrl,
     filename,
-    version: row("Version") || version,
-    arch: row("Processor") || row("Architecture") || row("Arch"),
-    size: row("Size"),
+    version: meta.version || version,
+    arch: meta.arch,
+    size: meta.size,
     sourceUrl,
     telegram,
   };

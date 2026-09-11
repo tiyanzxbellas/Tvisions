@@ -16,6 +16,15 @@ interface Props {
   fallbackUrl: string;
 }
 
+/**
+ * Scraped values are untrusted: clamp them so a weird source page can never
+ * dump a paragraph into a button label.
+ */
+function short(value: string | undefined, max: number): string {
+  const s = (value || "").trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string }) {
   if (!value) return null;
   return (
@@ -30,8 +39,11 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 }
 
 export default function DownloadPageView({ id, version, detail, file, detailUrl, fallbackUrl }: Props) {
-  const title = detail?.title || (file ? file.filename.replace(/\.apk$/i, "") : `APK ${id}`);
-  const ver = file?.version || version;
+  // keep scraped metadata short so a weird source page can never blow up a label
+  const filename = short(file?.filename, 90);
+  const size = short(file?.size, 24);
+  const ver = short(file?.version || version, 24);
+  const title = detail?.title || (filename ? filename.replace(/\.(apk|xapk|apks|apkm|obb|zip)$/i, "") : `APK ${id}`);
   const available = Boolean(file?.fileUrl);
   // Optional: stream the file through our own domain (/api/apk). Off by default
   // — production links straight to the source CDN file.
@@ -106,12 +118,12 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-void/50">
                 <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.03] px-5 py-3">
                   <FileBox className="h-4 w-4 text-neon" />
-                  <span className="break-all font-display text-sm font-bold">{file.filename}</span>
+                  <span className="break-all font-display text-sm font-bold">{filename}</span>
                 </div>
                 <dl className="grid sm:grid-cols-2">
-                  <InfoRow icon={<Tag className="h-3.5 w-3.5" />} label="Version" value={file.version} />
-                  <InfoRow icon={<HardDrive className="h-3.5 w-3.5" />} label="Size" value={file.size} />
-                  <InfoRow icon={<Cpu className="h-3.5 w-3.5" />} label="Processor" value={file.arch} />
+                  <InfoRow icon={<Tag className="h-3.5 w-3.5" />} label="Version" value={ver} />
+                  <InfoRow icon={<HardDrive className="h-3.5 w-3.5" />} label="Size" value={size} />
+                  <InfoRow icon={<Cpu className="h-3.5 w-3.5" />} label="Processor" value={short(file.arch, 40)} />
                 </dl>
               </div>
 
@@ -122,7 +134,7 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
               >
                 <Download className="h-6 w-6" strokeWidth={2.5} />
                 <span className="font-display text-lg font-bold">
-                  Download APK{file.size ? ` — ${file.size}` : ""}
+                  Download APK{size ? ` — ${size}` : ""}
                 </span>
               </a>
 
