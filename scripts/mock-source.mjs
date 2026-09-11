@@ -136,16 +136,36 @@ const DOWNLOAD_PAGE = `<!doctype html><html><head><title>Download Parahcuy – A
     <p><b>Processor:</b> arm64-v8a, armeabi-v7a</p>
     <p><b>Size:</b> 84.89 MB</p>
   </div>
-  <a class="dl-btn" href="/dl/parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk">Download APK<br>ParahCuy-v1.3.2-full-apkvision.apk</a>
-  <div class="dl-btn dl-btn-tg">
-    <span class="dl-btn-tg-title">Download from Telegram Bot</span>
-    <span class="dl-btn-tg-file">ParahCuy-v1.3.2-full-apkvision.apk</span>
-  </div>
+  <a id="durl" class="fdl-btn downad" href="/dl/parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk" rel="nofollow noopener" download><div class="fdl-btn-title"><div>Download  APK</div>ParahCuy-v1.3.2-full-apkvision.apk</div></a>
+  <button id="telega" class="fdl-btn mt telegram xx" onclick="generateToken('parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk')"><div class="fdl-btn-title"><div>Download from Telegram Bot</div>ParahCuy-v1.3.2-full-apkvision.apk</div></button>
   <script>
     function generateToken(filePath) {
-      var t = 0;
-      for (var i = 0; i < filePath.length; i++) t = (t * 31 + filePath.charCodeAt(i)) >>> 0;
-      return "tg_" + t.toString(36);
+        var data = {
+            'file_name': filePath,
+            'secret': 'zI7sDzI7sD6fid3432454qQ4u6qQ4u'
+        };
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/generate_token.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.token) {
+                            window.open('https://telegram.me/ApkDownload24Bot?start=' + encodeURIComponent(response.token), '_blank');
+                        } else {
+                            alert('Error generating token: ' + response.error);
+                        }
+                    } catch (e) {
+                        alert('Error processing server response.');
+                    }
+                } else {
+                    alert('Error sending request.');
+                }
+            }
+        };
+        xhr.send(JSON.stringify(data));
     }
   </script>
   <div class="dl-faq">
@@ -168,6 +188,30 @@ const server = http.createServer((req, res) => {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store" });
     res.end(body);
   };
+
+  // Fake token endpoint mirroring the real /generate_token.php: the app's
+  // /api/tg route POSTs {file_name, secret} here in dev, like the source
+  // site's inline generateToken() does in the browser.
+  if (p === "/generate_token.php" && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+    });
+    req.on("end", () => {
+      try {
+        const { file_name, secret } = JSON.parse(body || "{}");
+        if (secret !== "zI7sDzI7sD6fid3432454qQ4u6qQ4u" || !file_name) {
+          return send(200, "application/json", JSON.stringify({ error: "bad request" }));
+        }
+        let t = 0;
+        for (let i = 0; i < file_name.length; i++) t = (t * 31 + file_name.charCodeAt(i)) >>> 0;
+        return send(200, "application/json", JSON.stringify({ token: "mock_" + t.toString(36) }));
+      } catch {
+        return send(400, "application/json", JSON.stringify({ error: "bad json" }));
+      }
+    });
+    return;
+  }
 
   try {
     if (p === "/") return send(200, "text/html; charset=utf-8", HOME);
