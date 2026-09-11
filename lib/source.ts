@@ -45,6 +45,44 @@ function decodeEntities(s: string): string {
     .replace(/&#039;|&apos;/g, "'");
 }
 
+/* --------------------------- value sanitising ---------------------------- */
+
+/** Hard cap for anything scraped out of a source page. */
+const MAX_FIELD = 80;
+
+/**
+ * The source ships a lot of its markup as one long line, so a naive
+ * "Label: value" slice can run straight into the rest of the document (the
+ * download buttons, the FAQ, the sidebar, the footer…). Keep only the leading
+ * part of the value so a bad parse can never blow up a button label.
+ */
+function trimValue(raw: string, max = MAX_FIELD): string {
+  const s = clean(decodeEntities(raw));
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  const sp = head.lastIndexOf(" ");
+  return `${clean((sp > max / 3 ? head.slice(0, sp) : head).replace(/[\s,;:.+\-–—]+$/, ""))}…`;
+}
+
+/** Short values pass through untouched; a spilled one is cut down to `re`. */
+function pickValue(raw: string, re: RegExp, max = MAX_FIELD): string {
+  const s = clean(decodeEntities(raw));
+  if (!s) return "";
+  if (s.length <= max) return s;
+  const m = s.match(re);
+  return m ? clean(m[0]) : trimValue(s, max);
+}
+
+/** e.g. "2.46 GB" — leading `\s*`/`^\s*` variants for both anchored and mid-text use */
+const RE_SIZE = /^\s*\d[\d.,]*\s*(?:GB|MB|KB|B)\b/i;
+const RE_SIZE_ANY = /(?<![\d.,])\d[\d.,]*\s*(?:GB|MB|KB)\b/i;
+/** e.g. "GTA-SA-v2.11.311-full-mod-money-apkvision.apk" */
+const RE_FILE = /^[\w.+\-]{3,}\.(?:apk|xapk|apks|zip|obb|rar)\b/i;
+/** e.g. "v2.11.311" */
+const RE_VER = /^\s*v?\d[\w.+\-]*/i;
+/** e.g. "arm64-v8a, armeabi-v7a" */
+const RE_ARCH = /^[a-z0-9_][a-z0-9_\-]*(?:\s*,\s*[a-z0-9_][a-z0-9_\-]*)*/i;
+
 /** Convert absolute source URL -> local path. Returns null for non-cloneable URLs. */
 export function toLocal(href: string): string | null {
   try {
@@ -311,13 +349,29 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
     seenDl.add(href);
     // Never leak inline JS/CSS text into the button label.
     $(el).find("script, style").remove();
-    const label = clean($(el).text());
-    const sizeMatch = label.match(/(\d[\d.,]*\s*(?:GB|MB|KB))/i);
+    const text = clean($(el).text());
+    // The button stacks its bits in sibling <div>s, which .text() glues
+    // together ("v2.11.3112.46 GBAPK") — keep a spaced copy for reading.
+    const spaced = clean(($(el).html() || "").slice(0, 2000).replace(/<[^>]*>/g, " "));
+    // The source nests size / file-type / version badges inside its button, so
+    // the raw text is one long run ("Download X APK v1.0 84.89 MB APK v1.0").
+    // Prefer the innermost "Download …" line for the label and keep the size
+    // on its own line instead (see DownloadSection).
+    const inner = $(el)
+      .find("*")
+      .map((_, n) => clean($(n).text()))
+      .get()
+      .filter((t) => t.length >= 15 && /^download\b/i.test(t));
+    const label = trimValue(
+      inner.length ? inner.sort((a, b) => a.length - b.length)[0] : spaced || text,
+      90,
+    );
+    const sizeMatch = spaced.slice(0, 200).match(RE_SIZE_ANY);
     downloads.push({
       url: href.startsWith("http") ? href : `${ORIGIN}${href}`,
       localUrl: toLocalDownload(href) || "",
       label,
-      size: sizeMatch ? sizeMatch[1].toUpperCase() : "",
+      size: sizeMatch ? sizeMatch[0].toUpperCase() : "",
     });
   });
 
@@ -438,7 +492,11 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
     return "";
   };
 
-  const filename = row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || "");
+  // Every value runs through pickValue(): the download page can be a single
+  // long line of markup, in which case the slice after "Size:" (the last row)
+  // swallows the rest of the document.
+  const filename =
+    pickValue(row("Filename"), RE_FILE, 140) || decodeURIComponent(fileUrl.split("/").pop() || "");
 
   // "Download from Telegram Bot" alternative (same file, delivered by the
   // source's Telegram bot @ApkDownload24Bot). The button exists when the page
@@ -463,9 +521,9 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
   return {
     fileUrl,
     filename,
-    version: row("Version") || version,
-    arch: row("Processor") || row("Architecture") || row("Arch"),
-    size: row("Size"),
+    version: pickValue(row("Version"), RE_VER, 40) || version,
+    arch: pickValue(row("Processor") || row("Architecture") || row("Arch"), RE_ARCH, 60),
+    size: pickValue(row("Size"), RE_SIZE, 32),
     sourceUrl,
     telegram,
   };

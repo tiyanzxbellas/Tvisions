@@ -121,7 +121,8 @@ const DETAIL = `<!doctype html><html><head>
   <p class="rating">Rating: 4.8/5 (1234 votes)</p>
   <div class="votes"><span class="js-version-votes_percent">98%</span> Voices: <span>156</span></div>
   <div class="downloads">
-    <a href="/games/action/parahcuy-action-platformer-130581/download/v1.3.2-apk/">Download APK v1.3.2 (84.89 MB)</a>
+    <a class="fdl-btn" href="/games/action/parahcuy-action-platformer-130581/download/v1.3.2-apk/"><div class="fdl-btn-title"><div>Download Parahcuy – Action Platformer APK v1.3.2</div><div class="fdl-btn-size">84.89 MB</div><div class="fdl-btn-type">APK</div></div></a>
+    <a class="fdl-btn" href="/games/action/parahcuy-action-platformer-130581/download/v1.3.2-mod/"><div class="fdl-btn-title"><div>Download Parahcuy – Action Platformer MOD APK v1.3.2</div><div class="fdl-btn-size">84.89 MB</div><div class="fdl-btn-type">MOD</div></div></a>
   </div>
 </body></html>`;
 
@@ -130,12 +131,10 @@ const DOWNLOAD_PAGE = `<!doctype html><html><head><title>Download Parahcuy – A
   <h1>Download Parahcuy – Action Platformer - APK - v1.3.2</h1>
   <p>Your download link is almost ready</p>
   <div class="countdown"><span>5</span></div>
-  <div class="dl-info">
-    <p><b>Filename:</b> ParahCuy-v1.3.2-full-apkvision.apk</p>
-    <p><b>Version:</b> v1.3.2</p>
-    <p><b>Processor:</b> arm64-v8a, armeabi-v7a</p>
-    <p><b>Size:</b> 84.89 MB</p>
-  </div>
+  <!-- NOTE: kept on ONE line on purpose — the real source serves this block
+       minified, which is what made a naive "Label: value" parse swallow the
+       rest of the page (bug: giant download-button label). -->
+  <div class="dl-info"><p><b>Filename:</b> ParahCuy-v1.3.2-full-apkvision.apk</p><p><b>Version:</b> v1.3.2</p><p><b>Processor:</b> arm64-v8a, armeabi-v7a</p><p><b>Size:</b> 84.89 MB</p></div>
   <a id="durl" class="fdl-btn downad" href="/dl/parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk" rel="nofollow noopener" download><div class="fdl-btn-title"><div>Download  APK</div>ParahCuy-v1.3.2-full-apkvision.apk</div></a>
   <button id="telega" class="fdl-btn mt telegram xx" onclick="generateToken('parahcuy-action-platformer/ParahCuy-v1.3.2-full-apkvision.apk')"><div class="fdl-btn-title"><div>Download from Telegram Bot</div>ParahCuy-v1.3.2-full-apkvision.apk</div></button>
   <script>
@@ -219,7 +218,7 @@ const server = http.createServer((req, res) => {
     if (p === "/best-new-releases/" || p === "/popular-games/" || p === "/updated/" || p === "/top-100-games/")
       return send(200, "text/html; charset=utf-8", LISTING(p.replace(/^\//, "").replace(/-$|\/$/, "").replace(/-/g, " ")));
     if (p === "/games/action/parahcuy-action-platformer-130581/") return send(200, "text/html; charset=utf-8", DETAIL);
-    if (p === "/games/action/parahcuy-action-platformer-130581/download/v1.3.2-apk/")
+    if (p.startsWith("/games/action/parahcuy-action-platformer-130581/download/"))
       return send(200, "text/html; charset=utf-8", DOWNLOAD_PAGE);
     if (p.startsWith("/dl/") && p.endsWith(".apk")) {
       res.writeHead(200, {

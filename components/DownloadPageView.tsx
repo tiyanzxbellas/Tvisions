@@ -106,7 +106,7 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-void/50">
                 <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.03] px-5 py-3">
                   <FileBox className="h-4 w-4 text-neon" />
-                  <span className="break-all font-display text-sm font-bold">{file.filename}</span>
+                  <span className="break-all font-display text-sm font-bold line-clamp-2">{file.filename}</span>
                 </div>
                 <dl className="grid sm:grid-cols-2">
                   <InfoRow icon={<Tag className="h-3.5 w-3.5" />} label="Version" value={file.version} />
