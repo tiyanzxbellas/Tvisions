@@ -1,7 +1,14 @@
 import * as cheerio from "cheerio";
-import type { ApkDetail, ApkItem, DownloadLink, HomeSection, PagedResult } from "./types";
+import type { ApkDetail, ApkDownloadFile, ApkItem, DownloadLink, HomeSection, PagedResult } from "./types";
 
-export const ORIGIN = "https://apkvision.org";
+/** Source site. Overridable via SOURCE_ORIGIN (dev/local mock). */
+export const ORIGIN = process.env.SOURCE_ORIGIN || "https://apkvision.org";
+let ORIGIN_HOST = "apkvision.org";
+try {
+  ORIGIN_HOST = new URL(ORIGIN).hostname;
+} catch {
+  /* keep default */
+}
 export const API = `${ORIGIN}/wp-json/wp/v2`;
 
 const HEADERS = {
@@ -34,12 +41,28 @@ function decodeEntities(s: string): string {
 export function toLocal(href: string): string | null {
   try {
     const u = new URL(href, ORIGIN);
-    if (u.hostname !== "apkvision.org") return null;
+    if (u.hostname !== ORIGIN_HOST) return null;
     const p = u.pathname;
     if (p === "/" || p.startsWith("/games/") || p.startsWith("/app/")) return p;
     if (["/best-new-releases/", "/popular-games/", "/updated/", "/top-100-games/", "/request/"].includes(p))
       return p;
     return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Convert an external download-page URL -> local /download/... path. */
+export function toLocalDownload(href: string): string | null {
+  try {
+    const u = new URL(href, ORIGIN);
+    if (u.hostname !== ORIGIN_HOST) return null;
+    const segs = u.pathname.split("/").filter(Boolean);
+    const di = segs.indexOf("download");
+    if (di < 1 || di === segs.length - 1) return null;
+    // keep [genre?, slug] before "download" + [version] after it
+    const body = [...segs.slice(1, di), ...segs.slice(di + 1)];
+    return body.length >= 2 ? `/download/${body.join("/")}/` : null;
   } catch {
     return null;
   }
@@ -219,7 +242,7 @@ interface RestPost {
   categories: number[];
 }
 
-async function getRestPost(id: string): Promise<RestPost | null> {
+export async function getRestPost(id: string): Promise<RestPost | null> {
   try {
     const res = await fetch(`${API}/posts/${id}?_fields=id,slug,link,title,content,excerpt,modified,categories`, {
       headers: HEADERS,
@@ -282,6 +305,7 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
     const sizeMatch = label.match(/(\d[\d.,]*\s*(?:GB|MB|KB))/i);
     downloads.push({
       url: href.startsWith("http") ? href : `${ORIGIN}${href}`,
+      localUrl: toLocalDownload(href) || "",
       label,
       size: sizeMatch ? sizeMatch[1].toUpperCase() : "",
     });
@@ -331,12 +355,77 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
   };
 }
 
+/* ------------------------------ download pages ----------------------------- */
+
+/**
+ * Fetch the source's download page for a given post+version and extract the
+ * direct .apk file URL + file metadata (filename, size, arch, version).
+ * This lets us render our own download page that goes straight to the file,
+ * skipping the source's countdown timer and ads.
+ */
+export async function getDownloadFile(id: string, version: string): Promise<ApkDownloadFile | null> {
+  const post = await getRestPost(id);
+  if (!post) return null;
+  const detailPath = toLocal(post.link);
+  if (!detailPath) return null;
+  const sourceUrl = `${ORIGIN}${detailPath}download/${version}/`;
+
+  let html: string;
+  try {
+    const res = await fetch(sourceUrl, { headers: HEADERS, next: { revalidate: DETAIL_REVALIDATE } });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch {
+    return null;
+  }
+
+  const $ = cheerio.load(html);
+  let fileUrl = "";
+  $("a").each((_, el) => {
+    const href = $(el).attr("href") || "";
+    if (!href) return;
+    const abs = href.startsWith("http") ? href : `${ORIGIN}${href}`;
+    if (/\.apk(\?|#|$)/i.test(abs)) {
+      fileUrl = abs.split(/[?#]/)[0];
+      return false;
+    }
+  });
+  if (!fileUrl) return null;
+
+  // Parse "Label: value" pairs from the tag-stripped text (line based, so
+  // markup like <b>Size:</b> works regardless of tag placement).
+  const LABELS = ["Filename", "Version", "Processor", "Architecture", "Arch", "Size", "Updated"];
+  const plain = html.replace(/<[^>]*>/g, " ");
+  const lines = plain.split("\n").map(clean).filter(Boolean);
+  const row = (label: string): string => {
+    const re = new RegExp(`(?<![\\w-])${label}\\s*:\\s*(.+)`, "i");
+    for (const line of lines) {
+      const m = line.match(re);
+      if (m) {
+        // if several labels share one line, cut at the next label
+        const value = m[1].split(new RegExp(`\\s+(?:${LABELS.join("|")})\\s*:`, "i"))[0];
+        return clean(decodeEntities(value));
+      }
+    }
+    return "";
+  };
+
+  return {
+    fileUrl,
+    filename: row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || ""),
+    version: row("Version") || version,
+    arch: row("Processor") || row("Architecture") || row("Arch"),
+    size: row("Size"),
+    sourceUrl,
+  };
+}
+
 /** Related/popular items parsed from a detail page (sidebar block). */
 export async function getRelated(localPath: string): Promise<ApkItem[]> {
   try {
     const html = await fetchHtml(localPath.endsWith("/") ? localPath : `${localPath}/`, DETAIL_REVALIDATE);
     const $ = cheerio.load(html);
-    let items: ApkItem[] = [];
+    const items: ApkItem[] = [];
     $(".mainb").each((_, block) => {
       const title = clean($(block).find(".mainb-main-title").text()).toLowerCase();
       if (title.includes("popular")) {

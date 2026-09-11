@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import CatalogListing from "@/components/CatalogListing";
 import DetailView from "@/components/DetailView";
@@ -77,6 +77,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function GamesPage({ params, searchParams }: Props) {
   const [{ path }, { page: pageStr }] = await Promise.all([params, searchParams]);
   const page = Math.max(parseInt(pageStr || "1", 10) || 1, 1);
+
+  // legacy source-style /games/.../download/<version>/ -> our /download/... page
+  const segs = path || [];
+  const di = segs.indexOf("download");
+  if (di > 0 && di < segs.length - 1 && /-\d+$/.test(segs[di - 1])) {
+    redirect(`/download/${[...segs.slice(0, di), ...segs.slice(di + 1)].join("/")}/`);
+  }
+
   const r = resolve(path, page);
 
   if (r.type === "notfound") notFound();

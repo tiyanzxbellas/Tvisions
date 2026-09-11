@@ -4,8 +4,9 @@ Website download MOD APK games & premium apps Android dengan tema neon
 **hitam + hijau + biru**, animasi smooth, dan data live (±9.597 APK).
 Dibangun dengan **Next.js 16** — fully **Vercel-ready**.
 
-> ⚠️ No files are hosted here — every download button redirects to the original
-> source. All trademarks belong to their respective owners.
+> ⚠️ No files are hosted here — klik **Download** masuk halaman download milik
+> site ini (`/download/...`) yang langsung nyambung ke file di server source
+> (tanpa timer/ads source). All trademarks belong to their respective owners.
 
 ---
 
@@ -18,6 +19,7 @@ Dibangun dengan **Next.js 16** — fully **Vercel-ready**.
 | 🎮 Games / 📱 Apps | Full listing + pagination (`/games/`, `/app/`) |
 | 🗂️ Genres | 18 genre games + 19 kategori apps (`/games/action/`, `/app/tools/`, …) |
 | 📄 Detail page | Icon, version + MOD badges, rating, App Info, description, screenshot lightbox, download box, related |
+| 📥 Download page | `/download/<genre>/<slug>/<version>/` — halaman download branded (info file: name/size/arch) + tombol **langsung ke file source** (skip countdown 5 detik & ads source). Link lama style source (`/games/.../download/...`) auto-redirect ke sini. Noindex |
 | 🔎 Search | Full-page results (noindex) + **live suggestions** (`/api/suggest/`) |
 | ⭐ Special pages | `/best-new-releases/`, `/popular-games/`, `/updated/`, `/top-100-games/` |
 | 📝 More pages | `/request/`, `/privacy-policy/`, `/dmca/`, `/contacts/`, `/offline/` |
@@ -91,6 +93,20 @@ npm run dev      # http://localhost:3000
 npm run build && npm start
 ```
 
+**Dev offline / ganti source:** source site bisa di-override via env `SOURCE_ORIGIN`:
+
+```bash
+node scripts/mock-source.mjs                          # fake source di http://127.0.0.1:8931
+SOURCE_ORIGIN=http://127.0.0.1:8931 npm run dev      # jalankan dengan mock
+```
+
+**Opsional — file lewat domain kamu (`/api/apk`):** tombol download di halaman
+`/download/...` bisa di-stream lewat server kamu (bukan link langsung ke CDN
+source) dengan set `USE_APK_PROXY=1` saat **build**. Off by default: production
+tetap link langsung ke CDN source (hemat bandwidth & tanpa limit durasi
+function). Kalau pakai, pastikan plan kamu support durasi function yang cukup
+untuk file besar.
+
 > Catatan: prompt **Install App** (PWA) hanya muncul di production (Vercel) atau `next start` —
 > di `npm run dev` Chrome tidak menawarkannya, tapi tombol iOS tetap tampil.
 
@@ -103,10 +119,12 @@ app/
   page.tsx                    → homepage (hero + snap rows)
   games/[[...path]]/page.tsx  → listing + genre + detail games
   app/[[...path]]/page.tsx    → listing + genre + detail apps
+  download/[[...path]]/page.tsx → halaman download (file info + tombol langsung ke file)
   search/  offline/  api/suggest/
   best-new-releases/ popular-games/ updated/ top-100-games/
   request/ privacy-policy/ dmca/ contacts/
   sitemap.ts  robots.ts  not-found.tsx  error.tsx
-components/                   → Header, Footer, ApkCard, SectionBlock, InstallButton, …
+components/                   → Header, Footer, ApkCard, SectionBlock, InstallButton, DownloadPageView, …
 lib/  source.ts (data)  genres.ts  types.ts  pwa.ts (install hook)
+scripts/mock-source.mjs       → mock source site (dev offline)
 ```

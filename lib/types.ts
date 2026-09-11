@@ -12,8 +12,22 @@ export interface ApkItem {
 
 export interface DownloadLink {
   url: string;
+  /** Local download page on this site, e.g. /download/action/slug-123/v1.3.2-apk/ ("" when unavailable) */
+  localUrl: string;
   label: string;
   size: string;
+}
+
+/** Direct file info parsed from the source's download page. */
+export interface ApkDownloadFile {
+  /** Absolute URL of the .apk file on the source CDN */
+  fileUrl: string;
+  filename: string;
+  version: string;
+  arch: string;
+  size: string;
+  /** Original download page on the source (fallback link) */
+  sourceUrl: string;
 }
 
 export interface ApkDetail extends ApkItem {
