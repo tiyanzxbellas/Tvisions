@@ -34,6 +34,91 @@ function clean(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * A link label longer than this means the source's `<a>` didn't wrap a button
+ * but a whole section — see `linkLines`. Real buttons read like
+ * "Download APK — 2.46 GB".
+ */
+const MAX_LABEL = 64;
+
+/** Trim a parsed value to a sane length, cutting on a word boundary. */
+function capText(s: string, max = 100): string {
+  const v = clean(s);
+  if (v.length <= max) return v;
+  const cut = v.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return `${clean(sp > max / 2 ? cut.slice(0, sp) : cut)}…`;
+}
+
+/**
+ * Text of an element split the way the browser renders it: block-level tags
+ * (and `<br>`) become line breaks, inline noise (script/style/noscript/svg)
+ * is dropped. Needed because `$(el).text()` glues an entire nested subtree
+ * into one string.
+ */
+function linkLines(markup: string): string[] {
+  return markup
+    .replace(/<(script|style|noscript|template|svg)[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(
+      /<\/?\s*(div|p|li|ul|ol|h[1-6]|table|thead|tbody|tr|td|th|button|span|b|strong|em|i|a|section|article|aside|footer|header|nav|main|dl|dt|dd|figure|small|label)\b[^>]*>/gi,
+      "\n"
+    )
+    .replace(/<[^>]*>/g, " ")
+    .split("\n")
+    .map((l) => clean(decodeEntities(l)))
+    .filter(Boolean);
+}
+
+/** A line that is only a file name — never a button label. */
+const NOISE_LINE = /^[\w.+\-]+\.(?:apk|xapk|apks)$/i;
+
+/**
+ * Boilerplate that happens to start with "Download" (or is a page heading).
+ * These show up inside a runaway anchor and must never become the label.
+ */
+const BOILERPLATE_LINE =
+  /^(?:download\s+faqs?\b|faqs?\b|new releases?\b|send report\b|download\s+apkvision\b|related\b|comments?\b|attention\b|can(?:'|’)?t download)/i;
+
+/**
+ * Short label for a download link.
+ *
+ * The source's download markup is sloppy: the button's `<a>` is sometimes left
+ * unclosed, so the HTML parser nests everything after it (the file name, the
+ * Telegram button, the ARM64 "Attention!" note, the whole FAQ, the sidebar and
+ * the footer) inside the anchor. Plain `.text()` then returns the rest of the
+ * page as the button label. So: take the first rendered line that reads like a
+ * button ("Download APK — 2.46 GB"), and if nothing sane is left fall back to
+ * a label built from the parsed file size.
+ */
+function downloadLabel(markup: string): { label: string; size: string } {
+  const lines = linkLines(markup);
+  const full = clean(lines.join(" "));
+
+  // size: first "2.46 GB" / "84.89 MB" anywhere in the anchor
+  const sizeMatch = full.match(/(\d[\d.,]*\s*(?:GB|MB|KB))/i);
+  const size = sizeMatch ? sizeMatch[1].toUpperCase() : "";
+
+  // a short anchor is a well-formed button — keep its text as-is
+  if (full && full.length <= MAX_LABEL && !NOISE_LINE.test(full)) return { label: full, size };
+
+  // long anchor -> rebuild the label from the rendered lines, starting at the
+  // line that reads like a button and stopping at the file name / a long line
+  const start = lines.findIndex(
+    (l) => /^(download|get|install|unduh)\b/i.test(l) && !BOILERPLATE_LINE.test(l)
+  );
+  if (start >= 0) {
+    let label = lines[start];
+    for (let i = start + 1; i < lines.length; i++) {
+      if (NOISE_LINE.test(lines[i]) || label.length + 1 + lines[i].length > MAX_LABEL) break;
+      label = `${label} ${lines[i]}`;
+    }
+    return { label: capText(label, MAX_LABEL), size };
+  }
+
+  return { label: capText(size ? `Download APK — ${size}` : "Download APK", MAX_LABEL), size };
+}
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
@@ -309,15 +394,14 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
     const href = $(el).attr("href") || "";
     if (seenDl.has(href) || !href) return;
     seenDl.add(href);
-    // Never leak inline JS/CSS text into the button label.
-    $(el).find("script, style").remove();
-    const label = clean($(el).text());
-    const sizeMatch = label.match(/(\d[\d.,]*\s*(?:GB|MB|KB))/i);
+    // Clone first: never strip script/style out of the shared document, and
+    // never let an unclosed <a> leak the rest of the page into the label.
+    const { label, size } = downloadLabel($(el as never).clone().html() || "");
     downloads.push({
       url: href.startsWith("http") ? href : `${ORIGIN}${href}`,
       localUrl: toLocalDownload(href) || "",
       label,
-      size: sizeMatch ? sizeMatch[1].toUpperCase() : "",
+      size,
     });
   });
 
@@ -432,13 +516,21 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
       if (m) {
         // if several labels share one line, cut at the next label
         const value = m[1].split(new RegExp(`\\s+(?:${LABELS.join("|")})\\s*:`, "i"))[0];
-        return clean(decodeEntities(value));
+        // a run-on line (minified markup) must not become a paragraph
+        return capText(decodeEntities(value), 100);
       }
     }
     return "";
   };
 
-  const filename = row("Filename") || decodeURIComponent(fileUrl.split("/").pop() || "");
+  // Only ever a real file name — the "Filename:" row can carry the rest of the
+  // page's text when the source's markup runs together.
+  const FILENAME_RE = /[\w.+\-]+\.(?:apk|xapk|apks)/i;
+  const filenameRow = row("Filename");
+  const filenameMatch = filenameRow.match(FILENAME_RE);
+  const filename =
+    (filenameMatch ? decodeEntities(filenameMatch[0]) : "") ||
+    decodeURIComponent(fileUrl.split("/").pop() || "");
 
   // "Download from Telegram Bot" alternative (same file, delivered by the
   // source's Telegram bot @ApkDownload24Bot). The button exists when the page
