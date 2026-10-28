@@ -1,5 +1,5 @@
-import { Rocket, Crown, Gamepad2, Flame, RefreshCw, Smartphone, BadgeCheck } from "lucide-react";
-import { getHomeSections, getListing, getSpecialPage } from "@/lib/source";
+import { Rocket, Crown, Gamepad2, Flame, RefreshCw, Smartphone, BadgeCheck, MonitorSmartphone } from "lucide-react";
+import { getHomeSections, getListing, getPorts, getSpecialPage } from "@/lib/source";
 import { SPECIAL_PAGES } from "@/lib/genres";
 import type { ApkItem, HomeSection } from "@/lib/types";
 import SearchBar from "@/components/SearchBar";
@@ -16,6 +16,7 @@ const ICONS: Record<string, React.ReactNode> = {
   "new games": <Gamepad2 className="h-6 w-6 text-neon" />,
   popular: <Flame className="h-6 w-6 text-aqua" />,
   update: <RefreshCw className="h-6 w-6 text-neon" />,
+  port: <MonitorSmartphone className="h-6 w-6 text-aqua" />,
 };
 
 function iconFor(title: string): React.ReactNode {
@@ -37,6 +38,8 @@ async function enrichSection(s: HomeSection): Promise<HomeSection> {
       extra = (await getListing(asGenre[1] as "games" | "app", asGenre[2], 1)).items;
     } else if (asRoot) {
       extra = (await getListing(asRoot[1] as "games" | "app", null, 1)).items;
+    } else if (s.moreUrl === "/ports/") {
+      extra = (await getPorts(1)).items;
     } else {
       const slug = s.moreUrl.replaceAll("/", "");
       if (SPECIAL_PAGES[slug]) extra = (await getSpecialPage(slug, 1)).items;
@@ -63,6 +66,10 @@ export default async function Home() {
     getListing("app", null, 1).catch(() => ({ items: [], page: 1, totalPages: 1, title: "" })),
   ]);
   const sections = await Promise.all(rawSections.map(enrichSection));
+
+  // Android Ports row — only when the source homepage has no ports panel of its own
+  const hasPorts = sections.some((s) => s.moreUrl === "/ports/");
+  const portsRow = hasPorts ? null : await getPorts(1).catch(() => null);
 
   const marqueeItems = sections.flatMap((s) => s.items).slice(0, 16);
 
@@ -135,6 +142,16 @@ export default async function Home() {
           icon={iconFor(s.title)}
         />
       ))}
+
+      {!hasPorts && portsRow && portsRow.items.length > 0 && (
+        <SectionBlock
+          title="Android Ports"
+          moreUrl="/ports/"
+          moreLabel="More Ports"
+          items={portsRow.items.slice(0, 16)}
+          icon={<MonitorSmartphone className="h-6 w-6 text-neon" />}
+        />
+      )}
 
       {apps.items.length > 0 && (
         <SectionBlock

@@ -21,9 +21,19 @@ if (origin) {
 const nextConfig: NextConfig = {
   trailingSlash: true,
   images: {
+    // Next's optimizer refuses local/private-IP upstreams by default — allow
+    // them ONLY when SOURCE_ORIGIN points at the local mock (dev). In
+    // production SOURCE_ORIGIN is unset and this stays off.
+    ...(origin ? { dangerouslyAllowLocalIP: true } : {}),
     remotePatterns: [
       { protocol: "https", hostname: "apkvision.org", pathname: "/wp-content/**" },
       { protocol: "https", hostname: "img.apkvision.org", pathname: "/**" },
+      // belt & braces: the parser upgrades source hosts to https, but never
+      // let the optimizer 400 a card icon over a stray http:// or www. URL
+      { protocol: "http", hostname: "apkvision.org", pathname: "/wp-content/**" },
+      { protocol: "https", hostname: "www.apkvision.org", pathname: "/wp-content/**" },
+      { protocol: "http", hostname: "www.apkvision.org", pathname: "/wp-content/**" },
+      { protocol: "http", hostname: "img.apkvision.org", pathname: "/**" },
       ...extraPatterns,
     ],
   },

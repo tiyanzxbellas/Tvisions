@@ -1,5 +1,6 @@
 /* TiyanzVision service worker — offline support + asset caching */
-const CACHE = "tiyanzvision-v1";
+// v2: flush previously cached placeholder/broken icon responses (icon fix)
+const CACHE = "tiyanzvision-v2";
 const OFFLINE_URL = "/offline/";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/manifest.webmanifest"];
 

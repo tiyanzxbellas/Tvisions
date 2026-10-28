@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Star, Download, CalendarClock, User, Package, ChevronRight, Info, FileText } from "lucide-react";
 import type { ApkDetail, ApkItem } from "@/lib/types";
+import ApkIcon from "./ApkIcon";
 import Breadcrumbs from "./Breadcrumbs";
 import Screenshots from "./Screenshots";
 import DownloadSection from "./DownloadSection";
@@ -54,20 +54,14 @@ export default function DetailView({
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start">
             <div className="relative mx-auto shrink-0 sm:mx-0">
               <div className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-neon/50 to-royal/50 blur-lg" />
-              {detail.icon ? (
-                <Image
-                  src={detail.icon}
-                  alt={detail.title}
-                  width={160}
-                  height={160}
-                  priority
-                  className="relative h-36 w-36 rounded-3xl border border-white/20 object-cover sm:h-40 sm:w-40"
-                />
-              ) : (
-                <div className="relative grid h-36 w-36 place-items-center rounded-3xl bg-white/5 font-display text-5xl font-black text-neon sm:h-40 sm:w-40">
-                  {detail.title.charAt(0)}
-                </div>
-              )}
+              <ApkIcon
+                src={detail.icon}
+                title={detail.title}
+                width={160}
+                height={160}
+                priority
+                className="relative h-36 w-36 rounded-3xl border border-white/20 object-cover text-5xl font-black sm:h-40 sm:w-40"
+              />
             </div>
 
             <div className="min-w-0 flex-1 text-center sm:text-left">

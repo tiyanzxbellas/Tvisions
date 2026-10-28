@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import ApkIcon from "./ApkIcon";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import type { ApkItem } from "@/lib/types";
@@ -26,20 +26,13 @@ export default function ApkCard({
 
       <span className="relative">
         <span className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-neon/0 to-aqua/0 blur-md transition-all duration-300 group-hover:from-neon/40 group-hover:to-aqua/40" />
-        {item.icon ? (
-          <Image
-            src={item.icon}
-            alt={item.title}
-            width={96}
-            height={96}
-            loading="lazy"
-            className="relative h-20 w-20 rounded-2xl object-cover transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 sm:h-24 sm:w-24"
-          />
-        ) : (
-          <span className="relative grid h-20 w-20 place-items-center rounded-2xl bg-white/5 font-display text-2xl font-bold text-neon sm:h-24 sm:w-24">
-            {item.title.charAt(0)}
-          </span>
-        )}
+        <ApkIcon
+          src={item.icon}
+          title={item.title}
+          width={96}
+          height={96}
+          className="relative h-20 w-20 rounded-2xl object-cover text-2xl font-bold transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 sm:h-24 sm:w-24"
+        />
       </span>
 
       <span className="w-full">

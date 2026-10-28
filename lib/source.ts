@@ -3,6 +3,9 @@ import type {
   ApkDetail,
   ApkDownloadFile,
   ApkItem,
+  CollectionDetail,
+  CollectionGame,
+  CollectionSummary,
   DownloadLink,
   HomeSection,
   PagedResult,
@@ -130,6 +133,129 @@ function decodeEntities(s: string): string {
     .replace(/&#039;|&apos;/g, "'");
 }
 
+/* ------------------------------ image resolving ---------------------------- */
+
+/**
+ * Card icons on the source are lazy-loaded: for below-the-fold cards the raw
+ * `src` is a 1x1 placeholder and the real URL hides in `data-lazy-src` /
+ * `data-src` / `srcset` / `<noscript>`. The old `src || data-src` read never
+ * reached `data-src` (the placeholder is non-empty), so most homepage icons
+ * shipped to the browser as blank pixels. These helpers resolve the REAL
+ * icon URL for every lazy pattern and normalize it to an absolute,
+ * optimizer-friendly URL (relative / protocol-relative / http included).
+ */
+const PLACEHOLDER_BASENAME =
+  /^(?:placeholder|spacer|blank|transparent|pixel|1x1|lazy|lazyload|lazy-load|loading)(?:[._-]\d+x\d+)?\.(?:gif|png|jpe?g|svg|webp|avif)$/i;
+
+function isPlaceholderUrl(raw: string): boolean {
+  const v = raw.trim();
+  if (!v) return true;
+  const low = v.toLowerCase();
+  if (low.startsWith("data:") || low.startsWith("about:") || low.startsWith("javascript:")) return true;
+  const base = v.split(/[?#]/)[0].split("/").pop() || "";
+  return PLACEHOLDER_BASENAME.test(base);
+}
+
+const IS_HTTPS_ORIGIN = ORIGIN.toLowerCase().startsWith("https://");
+
+/**
+ * Normalize a parsed image URL: resolve relative/protocol-relative against
+ * ORIGIN, force https on source hosts. Returns "" for unusable/placeholder.
+ */
+function normalizeImageUrl(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const v = clean(decodeEntities(raw));
+  if (isPlaceholderUrl(v)) return "";
+  try {
+    const u = new URL(v, ORIGIN);
+    if (
+      u.protocol === "http:" &&
+      IS_HTTPS_ORIGIN &&
+      (u.hostname === ORIGIN_HOST || u.hostname === "apkvision.org" || u.hostname.endsWith(".apkvision.org"))
+    ) {
+      u.protocol = "https:";
+    }
+    return u.href;
+  } catch {
+    return "";
+  }
+}
+
+/** Pick the best candidate from a srcset: smallest ≥192w, else the largest. */
+function pickFromSrcset(srcset: string | undefined | null): string {
+  if (!srcset) return "";
+  const cands: { url: string; w: number }[] = [];
+  for (const part of srcset.split(",")) {
+    const m = part.trim().match(/^(\S+)(?:\s+(\d+(?:\.\d+)?)(w|x))?/);
+    if (!m) continue;
+    if (isPlaceholderUrl(m[1])) continue;
+    const w = m[2] ? parseFloat(m[2]) * (m[3] === "x" ? 100 : 1) : 0;
+    cands.push({ url: m[1], w });
+  }
+  if (cands.length === 0) return "";
+  const sorted = [...cands].sort((a, b) => a.w - b.w);
+  return (sorted.find((c) => c.w >= 192) || sorted[sorted.length - 1]).url;
+}
+
+const LAZY_SRC_ATTRS = ["data-lazy-src", "data-src", "data-original", "data-lazyloaded-src", "data-echo"];
+const LAZY_SRCSET_ATTRS = ["data-lazy-srcset", "data-srcset", "srcset"];
+
+/** Resolve one <img> element to its real URL ("" when it only holds a placeholder). */
+function resolveImgEl($: cheerio.CheerioAPI, el: unknown): string {
+  const img = $(el as never);
+  for (const attr of LAZY_SRC_ATTRS) {
+    const u = normalizeImageUrl(img.attr(attr));
+    if (u) return u;
+  }
+  const src = normalizeImageUrl(img.attr("src"));
+  if (src) return src;
+  for (const attr of LAZY_SRCSET_ATTRS) {
+    const u = normalizeImageUrl(pickFromSrcset(img.attr(attr)));
+    if (u) return u;
+  }
+  return "";
+}
+
+/**
+ * Real icon URL for a card element: its <img>s (lazy-aware), then
+ * <picture><source> srcset, then a <noscript> fallback img, then an inline
+ * CSS background-image.
+ */
+function resolveCardIcon($: cheerio.CheerioAPI, el: unknown): string {
+  const scope = $(el as never);
+  let found = "";
+  scope.find("img").each((_, im) => {
+    if (!found) found = resolveImgEl($, im);
+  });
+  if (found) return found;
+  scope.find("source").each((_, s) => {
+    if (found) return;
+    for (const attr of LAZY_SRCSET_ATTRS) {
+      const u = normalizeImageUrl(pickFromSrcset($(s).attr(attr)));
+      if (u) {
+        found = u;
+        break;
+      }
+    }
+  });
+  if (found) return found;
+  // <noscript><img src="real"></noscript> — cheerio keeps it as markup text
+  const nsEl = scope.find("noscript").first();
+  const ns = (nsEl.length ? nsEl.html() || nsEl.text() : "") || "";
+  const m = ns.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (m) {
+    const u = normalizeImageUrl(m[1]);
+    if (u) return u;
+  }
+  let bg = "";
+  scope.find("[style]").each((_, s) => {
+    if (bg) return;
+    const mm = ($(s).attr("style") || "").match(/url\(\s*["']?([^"')]+)["']?\s*\)/i);
+    if (mm) bg = normalizeImageUrl(mm[1]);
+  });
+  return bg;
+}
+
 /** Convert absolute source URL -> local path. Returns null for non-cloneable URLs. */
 export function toLocal(href: string): string | null {
   try {
@@ -137,6 +263,7 @@ export function toLocal(href: string): string | null {
     if (u.hostname !== ORIGIN_HOST) return null;
     const p = u.pathname;
     if (p === "/" || p.startsWith("/games/") || p.startsWith("/app/")) return p;
+    if (p === "/ports/" || p === "/collections/" || p.startsWith("/collections/")) return p;
     if (["/best-new-releases/", "/popular-games/", "/updated/", "/top-100-games/", "/request/"].includes(p))
       return p;
     return null;
@@ -221,9 +348,90 @@ function collectCards(
   return items.filter((i) => i.title && i.url);
 }
 
-function parseCards($: cheerio.CheerioAPI, scope?: string): ApkItem[] {
+function parseCards($: cheerio.CheerioAPI, scope?: string, opts?: { generic?: boolean }): ApkItem[] {
   const root = scope ? $(scope) : $("body");
-  return collectCards($, root as cheerio.Cheerio<never>);
+  const known = collectCards($, root as cheerio.Cheerio<never>);
+  if (known.length > 0 || !opts?.generic) return known;
+  return walkPostCards($, root as cheerio.Cheerio<never>);
+}
+
+/* ------------------------- generic card fallback --------------------------- */
+
+/**
+ * Template-proof card walker: finds anchors to post URLs
+ * (/(games|app)/…-<id>/) that look like cards (they carry an img or a
+ * heading) and extracts title/icon/version/badges from whatever markup the
+ * current — or next — source template uses. Powers new pages (/ports/,
+ * /collections/<slug>/) whose card classes differ from the known selectors,
+ * and acts as a safety net for future redesigns.
+ */
+const POST_PATH_RE = /^\/(games|app)\/(?:([\w-]+)\/)?[\w-]+-(\d+)\/$/;
+const VERSION_LINE = /^(?:v\d[\w.\-+]*|\d+(?:\.\d+)+[\w.\-+]*)$/i;
+const BADGE_WORD = /^(?:unlocked|full|premium|patched|update|launcher only|pro|god mode|no root|free shopping)$/i;
+
+function isBadgeLine(l: string): boolean {
+  if (/^mod\b/i.test(l)) return true;
+  if (!l) return false;
+  return l
+    .split("•")
+    .map((s) => clean(s))
+    .filter(Boolean)
+    .every((p) => BADGE_WORD.test(p));
+}
+
+function walkPostCards($: cheerio.CheerioAPI, root: cheerio.Cheerio<never>): CollectionGame[] {
+  const out: CollectionGame[] = [];
+  const seen = new Set<string>();
+  root.find("a[href]").each((_, el) => {
+    const a = $(el);
+    const href = a.attr("href") || "";
+    const local = toLocal(href);
+    if (!local) return;
+    const m = local.match(POST_PATH_RE);
+    if (!m) return;
+    const id = m[3];
+    if (BLOCKED_IDS.has(id) || seen.has(id)) return;
+    // must look like a card, not a plain text link (nav/breadcrumb/footer)
+    const hasImg = a.find("img").length > 0;
+    const titleEl = a.find("[class*='__title'], [class*='__name'], h1, h2, h3, h4, strong, b").first();
+    if (!hasImg && titleEl.length === 0) return;
+
+    const lines = linkLines(a.html() || "");
+    let title = clean(titleEl.text()) || clean(a.find("img").first().attr("alt") || "");
+    if (!title) {
+      title =
+        lines.find((l) => !VERSION_LINE.test(l) && !isBadgeLine(l) && !/^\d+$/.test(l) && !/ratings?$/i.test(l)) ||
+        "";
+    }
+    if (!title) return;
+
+    const textAll = clean(a.text());
+    const ratingsM = textAll.match(/([\d.,]+)\s*ratings?/i);
+    // "4.3" next to an "N ratings" label is a rating, not a version
+    let rating = "";
+    let ratingIdx = -1;
+    if (ratingsM) {
+      ratingIdx = lines.findIndex((l) => /^\d\.\d$/.test(l) && parseFloat(l) <= 5);
+      if (ratingIdx >= 0) rating = lines[ratingIdx];
+    }
+    const version = lines.find((l, i) => i !== ratingIdx && l !== title && VERSION_LINE.test(l)) || "";
+    const mod = lines.filter((l) => l !== title && l !== version && isBadgeLine(l)).join(" • ");
+
+    seen.add(id);
+    out.push({
+      id,
+      title,
+      url: local,
+      originalUrl: href.startsWith("http") ? href : `${ORIGIN}${local}`,
+      icon: resolveCardIcon($, el),
+      version,
+      mod,
+      genreSlug: m[2] || "",
+      rating,
+      ratings: ratingsM ? ratingsM[1] : "",
+    });
+  });
+  return out;
 }
 
 /** IDs hidden from all listings (source-brand apps, etc). */
@@ -245,19 +453,24 @@ function parseCard($: cheerio.CheerioAPI, el: unknown): ApkItem | null {
     .get()
     .filter(Boolean);
   // gen-2 explicit fields
-  const edition = clean(a.find(".apk-games-card__edition").first().text());
+  const edition = clean(
+    a.find(".apk-games-card__edition, .apk-browse-card__badge, [class*='__edition'], [class*='__badge']").first().text()
+  );
   let version = clean(
-    a.find(".apk-games-card__version, .apk-browse-card__version").first().text()
+    a.find(".apk-games-card__version, .apk-browse-card__version, [class*='__version']").first().text()
   );
   if (!version) version = cats[0] || "";
   const mod = edition || cats.slice(1).join(" • ");
-  const img = a.find("img").first();
   return {
     id,
-    title: clean(a.find(CARD_TITLE_SEL).first().text()) || clean(a.attr("title") || ""),
+    title:
+      clean(a.find(CARD_TITLE_SEL).first().text()) ||
+      clean(a.attr("title") || "") ||
+      clean(a.find("img").first().attr("alt") || ""),
     url: local,
     originalUrl: href.startsWith("http") ? href : `${ORIGIN}${local}`,
-    icon: img.attr("src") || img.attr("data-src") || "",
+    // lazy-aware: never the 1x1 placeholder left in `src` (see resolveCardIcon)
+    icon: resolveCardIcon($, el),
     version,
     mod,
   };
@@ -367,6 +580,111 @@ export async function searchApk(query: string, page: number): Promise<PagedResul
   };
 }
 
+/* ------------------------------ android ports ------------------------------ */
+
+/**
+ * Android Ports catalog (source: /ports/, paginated /ports/page/N/, 15 per
+ * page with a "Load More" link to the next page and a "Port catalog <N>"
+ * counter in the header — the only reliable source for totalPages).
+ */
+export async function getPorts(page: number): Promise<PagedResult> {
+  const path = page > 1 ? `/ports/page/${page}/` : "/ports/";
+  const html = await fetchHtmlOrNull(path);
+  if (html === null) return { items: [], page, totalPages: page, title: "Android Ports", total: 0 };
+  const $ = cheerio.load(html);
+  const items = parseCards($, undefined, { generic: true });
+  const countM = clean($("body").text()).match(/port catalog\D{0,24}?(\d[\d,]*)/i);
+  const total = countM ? parseInt(countM[1].replace(/,/g, ""), 10) : 0;
+  const perPage = page === 1 && items.length > 0 ? items.length : 15;
+  let totalPages = Math.max(parseTotalPages($), page);
+  if (total > 0) totalPages = Math.max(Math.ceil(total / perPage), page);
+  else if (items.length >= 15) totalPages = Math.max(totalPages, page + 1);
+  return { items, page, totalPages, title: clean($("h1").first().text()) || "Android Ports", total };
+}
+
+/* ------------------------------- collections ------------------------------- */
+
+const COLLECTION_PATH_RE = /^\/collections\/([\w-]+)\/$/;
+
+/** Collections archive (source: /collections/) — one card per collection. */
+export async function getCollections(): Promise<CollectionSummary[]> {
+  const html = await fetchHtmlOrNull("/collections/");
+  if (!html) return [];
+  const $ = cheerio.load(html);
+  const out: CollectionSummary[] = [];
+  const seen = new Set<string>();
+  $("a[href]").each((_, el) => {
+    const a = $(el);
+    const local = toLocal(a.attr("href") || "");
+    const m = local?.match(COLLECTION_PATH_RE);
+    if (!m) return;
+    const slug = m[1];
+    if (seen.has(slug)) return;
+    const icons: string[] = [];
+    a.find("img").each((_, im) => {
+      const u = resolveImgEl($, im);
+      if (u && !icons.includes(u)) icons.push(u);
+    });
+    // a card carries preview icons; a bare nav/menu text link doesn't
+    if (icons.length === 0) return;
+    const countM = clean(a.text()).match(/(\d+)\s+games?/i);
+    let title = clean(a.find("[class*='__title'], [class*='card-title'], h1, h2, h3, h4, strong, b").first().text());
+    if (!title) {
+      const lines = linkLines(a.html() || "").filter(
+        (l) => !/^\d+\s+games?$/i.test(l) && !/^view (more|all)/i.test(l)
+      );
+      title = lines[0] || slug.replace(/-/g, " ");
+    }
+    seen.add(slug);
+    out.push({
+      slug,
+      title,
+      url: local as string,
+      count: countM ? parseInt(countM[1], 10) : 0,
+      icons: icons.slice(0, 4),
+    });
+  });
+  return out;
+}
+
+/**
+ * One collection (source: /collections/<slug>/) — a ranked list of games.
+ * Rank = document order. Entries are read from the main content first so
+ * header/sidebar widgets never pollute the ranking.
+ */
+export async function getCollectionDetail(slug: string): Promise<CollectionDetail | null> {
+  if (!/^[\w-]+$/.test(slug)) return null;
+  const html = await fetchHtmlOrNull(`/collections/${slug}/`, DETAIL_REVALIDATE);
+  if (!html) return null;
+  const $ = cheerio.load(html);
+  const title =
+    clean($("h1").first().text()) ||
+    clean($('meta[property="og:title"]').attr("content") || "") ||
+    slug
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  const description = capText(
+    clean($('meta[name="description"]').attr("content") || $('meta[property="og:description"]').attr("content") || ""),
+    320
+  );
+  let items: CollectionGame[] = [];
+  for (const scope of ["main", "article", "[class*='collection']", "body"]) {
+    const root = $(scope).first();
+    if (!root.length) continue;
+    items = walkPostCards($, root as cheerio.Cheerio<never>);
+    if (items.length > 0) break;
+  }
+  const countM = clean($("body").text()).match(/games in this collection\D{0,12}?(\d+)/i);
+  return {
+    slug,
+    title,
+    description,
+    count: countM ? parseInt(countM[1], 10) : items.length,
+    items: items.slice(0, 100),
+  };
+}
+
 /* ---------------------------------- detail --------------------------------- */
 
 interface RestPost {
@@ -450,14 +768,25 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
     });
   });
 
+  // Screenshots live on the img.* CDN and are lazy-loaded too — resolve the
+  // real URL from data-*/srcset instead of trusting `src`. In dev (custom
+  // SOURCE_ORIGIN) the mock serves shots from the same host, so allow it too.
   const screenshots: string[] = [];
   const seenShot = new Set<string>();
-  $('img[src*="img.apkvision.org"]').each((_, el) => {
-    const src = $(el).attr("src") || "";
-    if (src && !seenShot.has(src)) {
-      seenShot.add(src);
-      screenshots.push(src);
+  const customOrigin = ORIGIN !== "https://apkvision.org";
+  $("img").each((_, el) => {
+    const src = resolveImgEl($, el);
+    if (!src) return;
+    let host = "";
+    try {
+      host = new URL(src).hostname;
+    } catch {
+      return;
     }
+    const okHost = host === "img.apkvision.org" || (customOrigin && host === ORIGIN_HOST);
+    if (!okHost || seenShot.has(src)) return;
+    seenShot.add(src);
+    screenshots.push(src);
   });
 
   const ratingMatch = html.match(/(\d+\.\d+)\/5\s*\((\d+)\s*votes\)/);
@@ -468,20 +797,21 @@ export async function getDetail(id: string, localPath: string): Promise<ApkDetai
   const cats = $(".mainb-cat")
     .map((_, c) => clean($(c).text()))
     .get();
+  const icon = normalizeImageUrl(ogImage) || screenshots[0] || "";
 
   return {
     id: String(post.id),
     title: clean($(".ver-top-h1 h1").first().text().replace(/\s+APK$/i, "")) || clean(post.title.rendered),
     url: localPath,
     originalUrl: post.link,
-    icon: ogImage,
+    icon,
     version: verTop[0] || cats[0] || "",
     mod: verTop.slice(1).join(" • "),
     descriptionHtml: post.content.rendered,
     info,
     googlePlayUrl,
     downloads,
-    screenshots,
+    screenshots: screenshots.filter((s) => s !== icon),
     rating: ratingMatch ? ratingMatch[1] : "",
     ratingVotes: ratingMatch ? ratingMatch[2] : "",
     workPercent: workMatch ? workMatch[1] : "",

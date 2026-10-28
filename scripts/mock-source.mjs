@@ -83,15 +83,70 @@ const card = (id, href, title, ver, mod, icon) => `
       <div class="mainb-cat">${mod}</div>
     </a>`;
 
+/* ----- gen-2 lazy <img> variants (mirrors the real template's lazyload) ---- */
+// The real site lazy-loads card icons: `src` is a 1x1 placeholder and the
+// real URL hides in data-* attributes / srcset / <noscript>. Each variant
+// below is one pattern the icon resolver must handle — before the fix every
+// variant except imgEager rendered as a blank box on TiyanzVision.
+const GIF_1PX = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+const SVG_PH = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3C/svg%3E";
+
+const imgEager = (t) => `<img src="${ORIGIN}/img/icon.png" alt="${t}">`;
+const imgLazyDataSrc = (t) => `<img src="${GIF_1PX}" data-src="${ORIGIN}/img/icon.png" alt="${t}" loading="lazy">`;
+const imgLazySrc = (t) => `<img src="${SVG_PH}" data-lazy-src="${ORIGIN}/img/icon.png" alt="${t}" loading="lazy">`;
+// note: /img/icon-140x140.png intentionally 404s on this mock — the resolver
+// must pick the 300w candidate, and the client retry strips -140x140 anyway
+const imgSrcsetOnly = (t) =>
+  `<img src="${GIF_1PX}" srcset="${ORIGIN}/img/icon-140x140.png 140w, ${ORIGIN}/img/icon.png 300w" alt="${t}" loading="lazy">`;
+const imgRelative = (t) => `<img src="/img/icon.png" alt="${t}">`;
+const imgNoscript = (t) =>
+  `<img src="${GIF_1PX}" alt="${t}" loading="lazy"><noscript><img src="${ORIGIN}/img/icon.png" alt="${t}"></noscript>`;
+
+const browseCard = (id, href, title, ver, badge, imgHtml) => `
+    <a href="${href}" class="apk-browse-card" data-browse-id="${id}">
+      ${imgHtml}
+      <span class="apk-browse-card__title">${title}</span>
+      ${badge ? `<span class="apk-browse-card__badge">${badge}</span>` : ""}
+      <span class="apk-browse-card__version">${ver}</span>
+    </a>`;
+
 const HOME = `<!doctype html><html><head><title>APKVision Mock</title></head><body>
+  <section>
+    <h2>Games</h2>
+    <section data-home-panel="new">
+      <h3 class="apk-home-panel-title">New</h3>
+      <div class="apk-home-card-track">
+        ${browseCard(130581, "/games/action/parahcuy-action-platformer-130581/", "Parahcuy – Action Platformer", "v1.3.2", "MOD: Unlimited Money", imgEager("Parahcuy"))}
+        ${browseCard(130999, "/games/action/gta-sa-v2-11-311-full-mod-money-130999/", "GTA SA", "v2.11.311", "Full", imgLazyDataSrc("GTA SA"))}
+        ${browseCard(130888, "/games/action/split-label-game-130888/", "Split Label Game", "v3.0", "", imgLazySrc("Split Label Game"))}
+        ${browseCard(130777, "/games/action/no-label-game-130777/", "No Label Game", "v9.9", "", imgSrcsetOnly("No Label Game"))}
+        ${browseCard(135179, "/games/adventure/the-elder-scrolls-v-skyrim-135179/", "The Elder Scrolls V: Skyrim", "v0.25", "Full", imgRelative("Skyrim"))}
+        ${browseCard(135280, "/games/action/the-void-135280/", "The Void", "v0.2-dev", "", imgNoscript("The Void"))}
+      </div>
+      <div class="apk-home-tab-more"><a href="/games/">View all new games</a></div>
+    </section>
+    <section data-home-panel="ports">
+      <h3 class="apk-home-panel-title">Android Ports</h3>
+      <div class="apk-home-card-track">
+        ${browseCard(131663, "/games/god-of-war-chains-of-olympus-131663/", "God of War: Chains of Olympus", "v0.1.0", "Full", imgLazyDataSrc("God of War"))}
+      </div>
+      <div class="apk-home-tab-more"><a href="/ports/">View all ports</a></div>
+    </section>
+  </section>
+  <section>
+    <h2>Apps</h2>
+    <section data-home-panel="new-apps">
+      <h3 class="apk-home-panel-title">New apps</h3>
+      <div class="apk-home-card-track">
+        ${browseCard(130581, "/games/action/parahcuy-action-platformer-130581/", "Parahcuy – Action Platformer", "v1.3.2", "", imgLazyDataSrc("Parahcuy"))}
+      </div>
+      <div class="apk-home-tab-more"><a href="/app/">View all new apps</a></div>
+    </section>
+  </section>
+  <!-- legacy gen-1 blocks (parser fallback only; ignored when panels exist) -->
   <div class="mainb">
     <div class="mainb-main-title">Best New Releases</div>
     <a href="/best-new-releases/" class="mainb-seemore">More</a>
-    ${card(130581, "/games/action/parahcuy-action-platformer-130581/", "Parahcuy – Action Platformer", "v1.3.2", "Unlimited Money", `${ORIGIN}/img/icon.png`)}
-  </div>
-  <div class="mainb">
-    <div class="mainb-main-title">Popular Games</div>
-    <a href="/popular-games/" class="mainb-seemore">More</a>
     ${card(130581, "/games/action/parahcuy-action-platformer-130581/", "Parahcuy – Action Platformer", "v1.3.2", "Unlimited Money", `${ORIGIN}/img/icon.png`)}
   </div>
 </body></html>`;
@@ -122,6 +177,10 @@ const DETAIL = `<!doctype html><html><head>
   <div class="votes"><span class="js-version-votes_percent">98%</span> Voices: <span>156</span></div>
   <div class="downloads">
     <a href="/games/action/parahcuy-action-platformer-130581/download/v1.3.2-apk/">Download APK v1.3.2 (84.89 MB)</a>
+  </div>
+  <div class="screenshots">
+    <img src="${ORIGIN}/img/shot1.png" alt="Parahcuy screenshot 1">
+    <img src="${GIF_1PX}" data-lazy-src="${ORIGIN}/img/shot2.png" alt="Parahcuy screenshot 2" loading="lazy">
   </div>
 </body></html>`;
 
@@ -316,6 +375,111 @@ const DETAIL_NO_LABEL = detailRunawayVariant(
   "v9.9"
 );
 
+/* -------------------------- android ports (/ports/) ----------------------- */
+// Deliberately uses a card class the parser does NOT know (`apk-port-card`)
+// to prove the generic fallback works — like a future source template change.
+const portCard = (href, title, badge, ver, imgHtml) => `
+    <a href="${href}" class="apk-port-card">
+      ${imgHtml}
+      <span class="apk-port-card__name">${title}</span>
+      ${badge ? `<span class="apk-port-card__badge">${badge}</span>` : ""}
+      <span class="apk-port-card__ver">${ver}</span>
+    </a>`;
+
+const portsPage = (cards, loadMore) => `<!doctype html><html><head>
+  <title>Android Ports – PC &amp; Console Games for Android | APKVision Mock</title>
+</head><body>
+  <h1>Android Ports</h1>
+  <h2>Port catalog <span>4</span></h2>
+  <div class="apk-ports-grid">
+    ${cards}
+  </div>
+  ${loadMore ? `<a class="apk-ports-loadmore" href="${loadMore}">Load More</a>` : ""}
+  <h2>Community wishlist</h2>
+  <p>No reviewed suggestions yet</p>
+</body></html>`;
+
+const PORTS_1 = portsPage(
+  [
+    portCard("/games/god-of-war-chains-of-olympus-131663/", "God of War: Chains of Olympus", "Full", "v0.1.0", imgLazyDataSrc("God of War")),
+    portCard("/games/adventure/the-elder-scrolls-v-skyrim-135179/", "The Elder Scrolls V: Skyrim", "Update • Full", "v0.25", imgSrcsetOnly("Skyrim")),
+    portCard("/games/action/the-void-135280/", "The Void", "Full", "v0.2-dev", imgNoscript("The Void")),
+  ].join(""),
+  "/ports/page/2/"
+);
+
+const PORTS_2 = portsPage(
+  portCard("/games/role-playing/lost-odyssey-135269/", "Lost Odyssey", "Full", "v1.1.0", imgEager("Lost Odyssey")),
+  null
+);
+
+/* --------------------------- collections ---------------------------------- */
+
+const COLLECTIONS = `<!doctype html><html><head><title>Collections | APKVision Mock</title></head><body>
+  <h1>Collections</h1>
+  <a class="collection-card" href="/collections/best-offline-games-for-android/">
+    <span class="collection-card__count">3 games</span>
+    <strong>Best Offline Games for Android</strong>
+    <span>View more</span>
+    <img src="${ORIGIN}/img/icon.png" alt="">
+    <img src="${GIF_1PX}" data-src="${ORIGIN}/img/shot1.png" alt="" loading="lazy">
+    <img src="${ORIGIN}/img/shot2.png" alt="">
+    <img src="/img/icon.png" alt="">
+  </a>
+  <a class="collection-card" href="/collections/poppy-playtime/">
+    <span class="collection-card__count">1 game</span>
+    <strong>All parts of Poppy Playtime</strong>
+    <span>View more</span>
+    <img src="${GIF_1PX}" data-lazy-src="${ORIGIN}/img/icon.png" alt="" loading="lazy">
+  </a>
+</body></html>`;
+
+const collectionGame = (rank, href, genre, title, rating, ratings, imgHtml) => `
+    <a class="collection-game" href="${href}">
+      <span class="collection-game__rank">${rank}</span>
+      ${imgHtml}
+      <span class="collection-game__genre">${genre}</span>
+      <strong>${title}</strong>
+      <span class="collection-game__rating">${rating}</span>
+      <span>${ratings} ratings</span>
+    </a>`;
+
+const collectionDetail = (title, desc, count, entries) => `<!doctype html><html><head>
+  <title>${title} | APKVision Mock</title>
+  <meta name="description" content="${desc}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${desc}">
+</head><body>
+  <main>
+    <h1>${title}</h1>
+    <p>${desc}</p>
+    <h2>Games in this collection</h2>
+    <span>${count}</span>
+    <div class="collection-games">
+      ${entries}
+    </div>
+    <p><strong>Community ranking</strong> 0 games</p>
+  </main>
+</body></html>`;
+
+const COLLECTION_OFFLINE = collectionDetail(
+  "Best Offline Games for Android",
+  "Hand-picked Android games you can play without Wi-Fi or mobile data.",
+  3,
+  [
+    collectionGame(1, "/games/role-playing/stardew-valley-40176/", "Role Playing", "Stardew Valley", "4.3", "1,402", imgEager("Stardew Valley")),
+    collectionGame(2, "/games/action/dead-cells-apk-1-64455/", "Action", "Dead Cells", "4.3", "781", imgLazyDataSrc("Dead Cells")),
+    collectionGame(3, "/games/role-playing/terraria-apk-51597/", "Role Playing", "Terraria", "4.4", "2,466", imgSrcsetOnly("Terraria")),
+  ].join("")
+);
+
+const COLLECTION_POPPY = collectionDetail(
+  "All parts of Poppy Playtime",
+  "Every Poppy Playtime chapter for Android in one collection.",
+  1,
+  collectionGame(1, "/games/action/parahcuy-action-platformer-130581/", "Action", "Poppy Playtime Chapter 1", "4.5", "999", imgLazyDataSrc("Poppy Playtime"))
+);
+
 /* --------------------------------- server --------------------------------- */
 
 const APK_FILE = Buffer.alloc(64 * 1024);
@@ -420,6 +584,37 @@ const server = http.createServer((req, res) => {
         .filter((post) => q && post.title.toLowerCase().includes(q))
         .map((post) => ({ id: post.id, title: { rendered: post.title }, url: post.link }));
       return send(200, "application/json", JSON.stringify(items));
+    }
+
+    if (p === "/app/" || p === "/app/tools/") return send(200, "text/html; charset=utf-8", LISTING("Apps"));
+    if (p === "/ports/") return send(200, "text/html; charset=utf-8", PORTS_1);
+    if (p === "/ports/page/2/") return send(200, "text/html; charset=utf-8", PORTS_2);
+    if (p === "/collections/") return send(200, "text/html; charset=utf-8", COLLECTIONS);
+    if (p === "/collections/best-offline-games-for-android/")
+      return send(200, "text/html; charset=utf-8", COLLECTION_OFFLINE);
+    if (p === "/collections/poppy-playtime/") return send(200, "text/html; charset=utf-8", COLLECTION_POPPY);
+    // generic post detail: any /games/...-<id>/ or /app/...-<id>/
+    if (/^\/(games|app)\/(?:[\w-]+\/)?[\w-]+-\d+\/$/.test(p))
+      return send(200, "text/html; charset=utf-8", DETAIL);
+    // generic REST post (any id not handled above)
+    const restM = p.match(/^\/wp-json\/wp\/v2\/posts\/(\d+)$/);
+    if (restM) {
+      const gid = parseInt(restM[1], 10);
+      return send(
+        200,
+        "application/json",
+        postJson(
+          {
+            id: gid,
+            slug: `mock-game-${gid}`,
+            link: `${ORIGIN}/games/action/mock-game-${gid}/`,
+            title: `Mock Game ${gid} APK`,
+            content: "<p>Generic mock post.</p>",
+            modified: "2026-09-10T08:00:00",
+          },
+          "<p>Generic mock post.</p>"
+        )
+      );
     }
 
     return send(404, "text/html; charset=utf-8", "<html><body>404 not found</body></html>");
