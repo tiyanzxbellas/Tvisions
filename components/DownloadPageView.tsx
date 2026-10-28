@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import ApkIcon from "./ApkIcon";
 import { Download, FileBox, HardDrive, Cpu, Tag, AlertTriangle, ExternalLink, ChevronLeft } from "lucide-react";
 import type { ApkDetail, ApkDownloadFile } from "@/lib/types";
 import Breadcrumbs from "./Breadcrumbs";
@@ -55,23 +55,17 @@ export default function DownloadPageView({ id, version, detail, file, detailUrl,
           <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-royal/25 blur-[100px]" />
 
           <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:p-8">
-            {detail?.icon ? (
-              <div className="relative mx-auto shrink-0 sm:mx-0">
-                <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-br from-neon/50 to-royal/50 blur-lg" />
-                <Image
-                  src={detail.icon}
-                  alt={title}
-                  width={112}
-                  height={112}
-                  priority
-                  className="relative h-28 w-28 rounded-3xl border border-white/20 object-cover"
-                />
-              </div>
-            ) : (
-              <div className="relative mx-auto grid h-28 w-28 shrink-0 place-items-center rounded-3xl border border-white/20 bg-white/5 font-display text-4xl font-black text-neon sm:mx-0">
-                {title.charAt(0)}
-              </div>
-            )}
+            <div className="relative mx-auto shrink-0 sm:mx-0">
+              <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-br from-neon/50 to-royal/50 blur-lg" />
+              <ApkIcon
+                src={detail?.icon || ""}
+                title={title}
+                width={112}
+                height={112}
+                priority
+                className="relative h-28 w-28 rounded-3xl border border-white/20 object-cover text-4xl font-black"
+              />
+            </div>
 
             <div className="min-w-0 flex-1 text-center sm:text-left">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-neon">Download ready</p>

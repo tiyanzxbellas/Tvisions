@@ -41,7 +41,9 @@ export default function Footer() {
           </Link>
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold text-slate-400">
             <Link href="/games/" className="transition hover:text-neon">Games</Link>
+            <Link href="/ports/" className="transition hover:text-neon">Android Ports</Link>
             <Link href="/app/" className="transition hover:text-neon">Apps</Link>
+            <Link href="/collections/" className="transition hover:text-neon">Collections</Link>
             <Link href="/top-100-games/" className="transition hover:text-neon">TOP 100</Link>
             <Link href="/privacy-policy/" className="transition hover:text-neon">Privacy Policy</Link>
             <Link href="/dmca/" className="transition hover:text-neon">DMCA</Link>

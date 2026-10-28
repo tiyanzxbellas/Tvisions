@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Gamepad2, Menu, X, Home, LayoutGrid, Smartphone, Trophy, ClipboardList } from "lucide-react";
+import { Gamepad2, Menu, X, Home, LayoutGrid, Smartphone, Trophy, ClipboardList, MonitorSmartphone, Layers } from "lucide-react";
 import SearchBar from "./SearchBar";
 import InstallButton from "./InstallButton";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home },
   { href: "/games/", label: "Games", icon: Gamepad2 },
+  { href: "/ports/", label: "Android Ports", icon: MonitorSmartphone },
   { href: "/app/", label: "Apps", icon: Smartphone },
+  { href: "/collections/", label: "Collections", icon: Layers },
   { href: "/top-100-games/", label: "TOP 100", icon: Trophy },
   { href: "/request/", label: "Order table", icon: ClipboardList },
 ];

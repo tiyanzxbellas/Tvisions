@@ -76,6 +76,37 @@ export interface PagedResult {
   page: number;
   totalPages: number;
   title: string;
+  /** Total items in the catalog, when the source page states it (Android Ports) */
+  total?: number;
+}
+
+/** One entry on the /collections/ archive page. */
+export interface CollectionSummary {
+  slug: string;
+  title: string;
+  /** local path, e.g. /collections/best-offline-games-for-android/ */
+  url: string;
+  /** "26 games" counter from the source card (0 when unknown) */
+  count: number;
+  /** Up to 4 preview icons shown on the source card */
+  icons: string[];
+}
+
+/** One ranked game on a collection detail page. */
+export interface CollectionGame extends ApkItem {
+  /** genre slug from the post URL, e.g. "role-playing" ("" when the URL has none) */
+  genreSlug: string;
+  rating: string;
+  /** vote count as printed on the source, e.g. "1,402" */
+  ratings: string;
+}
+
+export interface CollectionDetail {
+  slug: string;
+  title: string;
+  description: string;
+  count: number;
+  items: CollectionGame[];
 }
 
 export interface Genre {

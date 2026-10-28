@@ -22,6 +22,9 @@ Dibangun dengan **Next.js 16** — fully **Vercel-ready**.
 | 📥 Download page | `/download/<genre>/<slug>/<version>/` — halaman download branded (info file: name/size/arch) + tombol **langsung ke file source** (skip countdown 5 detik & ads source) + tombol **Download from Telegram Bot** yang langsung deep-link ke bot Telegram source (`t.me/ApkDownload24Bot?start=<token>`, token sekali pakai diambil server-side via `/api/tg` → `generate_token.php` — persis cara kerja tombol di web source, tanpa buka halaman source). Link lama style source (`/games/.../download/...`) auto-redirect ke sini. Noindex |
 | 🔎 Search | Full-page results (noindex) + **live suggestions** (`/api/suggest/`) |
 | ⭐ Special pages | `/best-new-releases/`, `/popular-games/`, `/updated/`, `/top-100-games/` |
+| 🎮 Android Ports | `/ports/` — katalog port game PC/console ke Android (live dari source, 15/halaman + counter total katalog) |
+| 🗂️ Collections | `/collections/` + `/collections/<slug>/` — koleksi game terkurasi berisi ranked list (genre, rating, jumlah votes) |
+| 🖼️ Icons anti-blank | Icon resolver lazy-aware di server (`data-lazy-src`/`data-src`/`srcset`/`<noscript>`, normalisasi http→https & URL relatif) + komponen `ApkIcon` di browser (retry file full-size saat thumbnail 404, terakhir tile huruf) — tidak ada lagi kartu tanpa gambar |
 | 📝 More pages | `/request/`, `/privacy-policy/`, `/dmca/`, `/contacts/`, `/offline/` |
 | 📲 PWA | Installable! Manifest + service worker (cache + offline page) + tombol **Install App** (FAB + header) + panduan iOS |
 | 🎞️ Animations | Scroll reveals, hover glow, top progress bar, marquee, lightbox, counters (Framer Motion + CSS) |

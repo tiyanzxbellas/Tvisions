@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { GAME_GENRES, APP_CATS, SPECIAL_PAGES } from "@/lib/genres";
-import { API, toLocal } from "@/lib/source";
+import { API, getCollections, toLocal } from "@/lib/source";
 import { getSiteUrlSafe } from "@/lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -10,6 +10,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/`, lastModified: now, changeFrequency: "hourly", priority: 1 },
     { url: `${BASE}/games/`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/app/`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/ports/`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE}/collections/`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     ...GAME_GENRES.map((g) => ({
       url: `${BASE}/games/${g.slug}/`,
       lastModified: now,
@@ -29,6 +31,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
   ];
+
+  // include collection detail pages
+  try {
+    const collections = await getCollections();
+    for (const c of collections) {
+      urls.push({
+        url: `${BASE}${c.url}`,
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+  } catch {
+    /* ignore */
+  }
 
   // include latest 100 APK detail URLs
   try {
