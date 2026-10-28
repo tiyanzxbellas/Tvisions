@@ -190,16 +190,28 @@ async function fetchHtmlOrNull(path: string, revalidate = LIST_REVALIDATE): Prom
   return res.text();
 }
 
-/** Parse `a.mainb-item` (games) and `a.main-news` (apps) cards. */
-const CARD_SEL = "a.mainb-item, a.main-news";
-const CARD_TITLE_SEL = ".mainb-title, .main-news-title";
+/**
+ * Card anchors, both template generations:
+ * - gen-2 (current, after the 2026-10 source redesign): `a.apk-games-card`
+ *   (games/app listings), `a.apk-browse-card` (homepage panels + search
+ *   results) and `a.apk-discovery__card` (detail-page related blocks).
+ * - gen-1 (legacy): `a.mainb-item` (games) and `a.main-news` (apps), kept so
+ *   an APO cache hit / rollback never blanks the site.
+ */
+const CARD_SEL =
+  "a.apk-games-card, a.apk-browse-card, a.apk-discovery__card, a.mainb-item, a.main-news";
+const CARD_TITLE_SEL =
+  ".apk-games-card__title, .apk-browse-card__title, .apk-discovery__name, .mainb-title, .main-news-title";
 const CARD_CAT_SEL = ".mainb-cat, .main-news-cat";
 
-function parseCards($: cheerio.CheerioAPI, scope?: string): ApkItem[] {
+/** Parse cards under a root element, de-duplicated by id. */
+function collectCards(
+  $: cheerio.CheerioAPI,
+  root: cheerio.Cheerio<never>
+): ApkItem[] {
   const items: ApkItem[] = [];
   const seen = new Set<string>();
-  const sel = scope ? `${scope} ${CARD_SEL}` : CARD_SEL;
-  $(sel).each((_, el) => {
+  root.find(CARD_SEL).each((_, el) => {
     const parsed = parseCard($, el);
     if (parsed && !seen.has(parsed.id)) {
       seen.add(parsed.id);
@@ -207,6 +219,11 @@ function parseCards($: cheerio.CheerioAPI, scope?: string): ApkItem[] {
     }
   });
   return items.filter((i) => i.title && i.url);
+}
+
+function parseCards($: cheerio.CheerioAPI, scope?: string): ApkItem[] {
+  const root = scope ? $(scope) : $("body");
+  return collectCards($, root as cheerio.Cheerio<never>);
 }
 
 /** IDs hidden from all listings (source-brand apps, etc). */
@@ -217,22 +234,32 @@ function parseCard($: cheerio.CheerioAPI, el: unknown): ApkItem | null {
   const href = a.attr("href") || "";
   const local = toLocal(href);
   if (!local) return null;
-  const id = idFromHref(href, a.attr("id"));
+  // gen-2 cards carry the numeric id in data-game-id / data-browse-id
+  const dataId = a.attr("data-game-id") || a.attr("data-browse-id") || "";
+  const id = dataId || idFromHref(href, a.attr("id"));
   if (BLOCKED_IDS.has(id)) return null;
+  // gen-1 category strip (also duplicates version/mod when present)
   const cats = a
     .find(CARD_CAT_SEL)
     .map((_, c) => clean($(c).text()))
     .get()
     .filter(Boolean);
+  // gen-2 explicit fields
+  const edition = clean(a.find(".apk-games-card__edition").first().text());
+  let version = clean(
+    a.find(".apk-games-card__version, .apk-browse-card__version").first().text()
+  );
+  if (!version) version = cats[0] || "";
+  const mod = edition || cats.slice(1).join(" • ");
   const img = a.find("img").first();
   return {
     id,
-    title: clean(a.find(CARD_TITLE_SEL).text()) || clean(a.attr("title") || ""),
+    title: clean(a.find(CARD_TITLE_SEL).first().text()) || clean(a.attr("title") || ""),
     url: local,
     originalUrl: href.startsWith("http") ? href : `${ORIGIN}${local}`,
     icon: img.attr("src") || img.attr("data-src") || "",
-    version: cats[0] || "",
-    mod: cats.slice(1).join(" • "),
+    version,
+    mod,
   };
 }
 
@@ -251,31 +278,49 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   const html = await fetchHtml("/");
   const $ = cheerio.load(html);
   const sections: HomeSection[] = [];
-  $(".mainb").each((_, block) => {
-    const b = $(block);
-    const title = clean(b.find(".mainb-main-title").first().text());
-    if (!title) return;
-    const more = b.find("a.mainb-seemore").first();
-    const moreHref = more.attr("href") || "";
-    // parse cards within this block only
-    const items: ApkItem[] = [];
-    const seen = new Set<string>();
-    b.find(CARD_SEL).each((_, el) => {
-      const parsed = parseCard($, el);
-      if (parsed && !seen.has(parsed.id)) {
-        seen.add(parsed.id);
-        items.push(parsed);
-      }
-    });
+
+  // gen-2 home template: each panel is a <section data-home-panel="..."> with
+  // an h3.apk-home-panel-title, a .apk-home-card-track of browse cards and a
+  // .apk-home-tab-more "View all ..." link. Games panel titles read plain
+  // ("New", "Popular"); app panels say "New apps" or get an "(Apps)" suffix so
+  // two panels never render under the same heading.
+  $("[data-home-panel]").each((_, panel) => {
+    const p = $(panel);
+    const heading = clean(p.find(".apk-home-panel-title").first().text());
+    if (!heading) return;
+    const isApps = /apps/i.test(clean(p.closest("section").find("h2").first().text()));
+    const title = isApps && !/apps/i.test(heading) ? `${heading} (Apps)` : heading;
+    const more = p.find(".apk-home-tab-more a").first();
+    const items = collectCards($, p as cheerio.Cheerio<never>);
     if (items.length > 0) {
       sections.push({
         title,
-        moreUrl: toLocal(moreHref) || "",
+        moreUrl: toLocal(more.attr("href") || "") || "",
         moreLabel: clean(more.text()) || "More",
         items,
       });
     }
   });
+
+  // gen-1 fallback (legacy .mainb blocks)
+  if (sections.length === 0) {
+    $(".mainb").each((_, block) => {
+      const b = $(block);
+      const title = clean(b.find(".mainb-main-title").first().text());
+      if (!title) return;
+      const more = b.find("a.mainb-seemore").first();
+      const moreHref = more.attr("href") || "";
+      const items = collectCards($, b as cheerio.Cheerio<never>);
+      if (items.length > 0) {
+        sections.push({
+          title,
+          moreUrl: toLocal(moreHref) || "",
+          moreLabel: clean(more.text()) || "More",
+          items,
+        });
+      }
+    });
+  }
   return sections;
 }
 
@@ -563,11 +608,23 @@ export async function getDownloadFile(id: string, version: string): Promise<ApkD
   };
 }
 
-/** Related/popular items parsed from a detail page (sidebar block). */
+/** Related/popular items parsed from a detail page (discovery block). */
 export async function getRelated(localPath: string): Promise<ApkItem[]> {
   try {
     const html = await fetchHtml(localPath.endsWith("/") ? localPath : `${localPath}/`, DETAIL_REVALIDATE);
     const $ = cheerio.load(html);
+
+    // gen-2 detail template: tabbed .apk-discovery section, panels
+    // similar -> popular -> hot. "Similar" is the best match for a related
+    // row, so prefer it and fall back to the other panels.
+    let panel = $("#apk-discovery-panel-similar");
+    if (!panel.length) panel = $("#apk-discovery-panel-popular");
+    if (!panel.length) panel = $("section.apk-discovery .apk-discovery__panel").first();
+    if (panel.length) {
+      return collectCards($, panel as cheerio.Cheerio<never>).slice(0, 12);
+    }
+
+    // gen-1 fallback: legacy .mainb block titled "popular"
     const items: ApkItem[] = [];
     $(".mainb").each((_, block) => {
       const title = clean($(block).find(".mainb-main-title").text()).toLowerCase();
